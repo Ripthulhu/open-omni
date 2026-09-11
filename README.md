@@ -61,5 +61,4 @@ UI sanitizer checks and flasher tests on Windows, Linux and macOS.
 
 - [Firmware](firmware/mcu1-source/): application source, drivers and tests.
 - [Tools](tools/): portable flasher and packaging.
-- [Research](docs/research.md): board, protocols, audio and charging findings.
 - [Repository layout](docs/repository.md).

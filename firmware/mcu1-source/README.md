@@ -145,4 +145,3 @@ No arbitrary memory/peripheral writes are exposed. Fixed diagnostics include
 bounded peripheral reads; recovery and peer probes are explicit guarded actions.
 Readback and multi-page snapshots are sequential.
 
-Official references and download status are indexed in `../rebuild-re/official-docs/INDEX.md`.
