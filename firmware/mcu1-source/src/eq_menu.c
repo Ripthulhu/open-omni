@@ -109,33 +109,40 @@ static void preset(char out[12],unsigned n)
     static const char *const mic[]={"FLAT","BALANCE","BCAST-H","BCAST-L","CLAR-L","CLAR-H","DEEP","NASAL","WALKIE","CUSTOM"};
     strcpy(out,control==13u?(n<10u?mic[n]:"--"):(n<5u?eq[n]:"--"));
 }
+static void graph(uint8_t frame[1024])
+{
+    omni_eq_view v={0};
+    v.title=control==12u?"WIRELESS EQ":control==13u?"MIC EQ":"BLUETOOTH EQ";
+    v.parametric=control==12u;v.editing=editing;v.apply=depth==1u && row==10u;
+    v.selected=depth==1u?row:band;v.field=depth==2u?row:editing?0u:4u;
+    for(unsigned i=0;i<10u;++i) {
+        v.known[i]=io.read(base()+i,&v.gain[i]);
+        if(v.parametric) v.known[i]=io.read(base()+10u+i,&v.frequency[i]) && v.known[i];
+        if(editing && i==v.selected) {
+            if(depth==1u || row==0u)v.gain[i]=value;
+            else if(row==1u)v.frequency[i]=value;
+        }
+    }
+    if(!v.apply) for(unsigned kind=0;kind<4u;++kind) {
+        unsigned n=0;
+        bool known=io.read(base()+v.selected+10u*kind,&n);
+        if(editing && kind==v.field){n=value;known=true;}
+        if(known)parameter(v.values[kind],kind,n);else strcpy(v.values[kind],"--");
+    }
+    v.status=message?message:feedback && io.status?io.status():dirty?"DRAFT":0;
+    omni_eq_ui_render(frame,&v);
+}
 void omni_eq_menu_render(uint8_t frame[1024])
 {
-    omni_settings_view v={0};char labels[4][12],title[24];
+    if(depth){graph(frame);return;}
+    omni_settings_view v={0};
     static const char *const roots[]={"PRESET","EDIT CURVE","NEW FLAT"};
-    static const char *const params[]={"GAIN","FREQUENCY","Q","FILTER"};
-    strcpy(title,control==12u?"WIRELESS EQ":control==13u?"MIC EQ":"BLUETOOTH EQ");
-    if(depth==2u) {strcpy(title,"WIRELESS B");number(title+10,band+1u);}
-    v.title=title;v.count=count();v.selected=row;v.editing=editing;
-    unsigned first=row/4u*4u;
-    for(unsigned slot=0;slot<4u && first+slot<v.count;++slot) {
-        unsigned index=first+slot,n=0,id=control;bool known=false;
-        if(!depth) {
-            v.labels[slot]=roots[index];
-            if(!index) {known=io.read(control,&n);if(editing){n=value;known=true;}if(known)preset(v.values[slot],n);}
-        } else if(depth==1u) {
-            if(index==10u) {v.labels[slot]="APPLY CURVE";continue;}
-            strcpy(labels[slot],"BAND ");number(labels[slot]+5,index+1u);v.labels[slot]=labels[slot];
-            id=base()+index;known=io.read(id,&n);
-            if(editing && index==row) {n=value;known=true;}
-            if(known) gain(v.values[slot],n);
-        } else {
-            v.labels[slot]=params[index];id=base()+band+index*10u;known=io.read(id,&n);
-            if(editing && index==row) {n=value;known=true;}
-            if(known) parameter(v.values[slot],index,n);
-        }
-        if(!known && (depth || !index)) strcpy(v.values[slot],"--");
-    }
-    v.status=message?message:feedback && io.status?io.status():depth && dirty?"DRAFT":0;
+    v.title=control==12u?"WIRELESS EQ":control==13u?"MIC EQ":"BLUETOOTH EQ";
+    v.count=3;v.selected=row;v.editing=editing;
+    for(unsigned i=0;i<3u;++i)v.labels[i]=roots[i];
+    unsigned n;bool known=io.read(control,&n);
+    if(editing){n=value;known=true;}
+    if(known)preset(v.values[0],n);else strcpy(v.values[0],"--");
+    v.status=message?message:feedback && io.status?io.status():0;
     omni_settings_ui_render(frame,&v);
 }

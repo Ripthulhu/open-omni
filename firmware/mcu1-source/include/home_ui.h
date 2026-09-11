@@ -54,6 +54,14 @@ typedef struct {
     bool editing;
 } omni_settings_view;
 void omni_settings_ui_render(uint8_t frame[1024],const omni_settings_view *view);
+typedef struct {
+    const char *title,*status;
+    unsigned gain[10],frequency[10]; /* Gain offset: 120 = 0 dB; frequency in Hz. */
+    bool known[10],parametric,editing,apply;
+    unsigned selected,field; /* Field 0 gain,1 frequency,2 Q,3 filter;4 overview. */
+    char values[4][12];
+} omni_eq_view;
+void omni_eq_ui_render(uint8_t frame[1024],const omni_eq_view *view);
 
 void omni_home_ui_render(uint8_t frame[1024], const omni_home_view *view);
 void omni_menu_ui_render(uint8_t frame[1024], const omni_menu_view *view);

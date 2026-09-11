@@ -24,6 +24,13 @@ void omni_settings_ui_render(uint8_t frame[1024],const omni_settings_view *v)
         strcpy(labels[i],v->labels[i]?v->labels[i]:"");strcpy(values[i],v->values[i]);
     }
 }
+void omni_eq_ui_render(uint8_t frame[1024],const omni_eq_view *v)
+{
+    memset(frame,0,1024);selected=v->apply?10u:v->selected;editing=v->editing;
+    strcpy(values[0],v->values[0]);
+    if(v->apply)strcpy(labels[2],"APPLY CURVE");
+    if(v->editing && v->field==0u)assert(v->gain[v->selected]==(unsigned)(fields[128u+(v->parametric?0u:!strcmp(v->title,"MIC EQ")?64u:128u)+v->selected]+5u));
+}
 static void click(void) {omni_eq_menu_event(OMNI_CONTROL_SELECT);}
 static void back(void) {omni_eq_menu_event(OMNI_CONTROL_BACK);}
 static void down(void) {omni_eq_menu_dial(-1);}

@@ -199,3 +199,8 @@ add_executable(test_eq_menu tests/test_eq_menu.c src/eq_menu.c)
 target_include_directories(test_eq_menu PRIVATE include)
 omni_test_warnings(test_eq_menu -Wconversion)
 add_test(NAME eq_menu COMMAND test_eq_menu)
+
+add_executable(test_eq_graph tests/test_eq_graph.c src/native_gain_curve.c src/volume_scale.c)
+target_include_directories(test_eq_graph PRIVATE include)
+omni_test_warnings(test_eq_graph -Wconversion)
+add_test(NAME eq_graph COMMAND test_eq_graph)

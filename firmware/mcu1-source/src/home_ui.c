@@ -270,3 +270,108 @@ void omni_settings_ui_render(uint8_t f[1024],const omni_settings_view *v)
     box(f,0,54,128,1,true);
     if(v->status) text(f,0,57,v->status,21,1,true);
 }
+
+/* Control-point plot: interpolating band gains is not a DSP response model. */
+static unsigned eq_x(unsigned frequency)
+{
+    static const unsigned knots[]={20,32,50,80,126,200,317,502,796,1262,2000,3170,5024,7962,12619,20000};
+    if(frequency<=20u) return 22u;
+    if(frequency>=20000u) return 125u;
+    unsigned i=0;while(i<14u && frequency>knots[i+1u]) ++i;
+    unsigned fraction=(frequency-knots[i])*1024u/(knots[i+1u]-knots[i]);
+    return 22u+((i*1024u+fraction)*103u+7680u)/(15u*1024u);
+}
+static unsigned eq_y(unsigned gain)
+{if(gain>240u)gain=240u;return 39u-(gain*28u+120u)/240u;}
+static void eq_line(uint8_t *f,unsigned ax,unsigned ay,unsigned bx,unsigned by)
+{
+    int x=(int)ax,y=(int)ay,dx=(int)bx-x,dy=(int)by-y;
+    int sx=dx<0?-1:1,sy=dy<0?-1:1;
+    if(dx<0)dx=-dx;
+    if(dy>0)dy=-dy;
+    int error=dx+dy;
+    for(unsigned guard=0;guard<128u;++guard) {
+        pixel(f,(unsigned)x,(unsigned)y,true);
+        if(x==(int)bx && y==(int)by)break;
+        int twice=2*error;
+        if(twice>=dy){error+=dy;x+=sx;}
+        if(twice<=dx){error+=dx;y+=sy;}
+    }
+}
+static void eq_value(uint8_t *f,unsigned x,unsigned y,const char *value,bool focus,bool editing)
+{
+    unsigned n=(unsigned)strlen(value);if(n>7u)n=7u;
+    if(focus && editing) {
+        box(f,x-1u,y-1u,n*6u+1u,1u,true);
+        box(f,x-1u,y+7u,n*6u+1u,1u,true);
+        box(f,x-1u,y-1u,1u,9u,true);
+        box(f,x+n*6u-1u,y-1u,1u,9u,true);
+    }
+    text(f,x,y,value,7u,1u,true);
+    if(focus && !editing && n) box(f,x,y+7u,n*6u-1u,1u,true);
+}
+void omni_eq_ui_render(uint8_t f[1024],const omni_eq_view *v)
+{
+    if(!f)return;
+    memset(f,0,1024);if(!v)return;
+    text(f,0,0,v->title,14u,1u,true);
+    if(v->apply) text(f,98,0,"APPLY",5u,1u,true);
+    else {
+        text(f,104,0,"B",1u,1u,true);
+        number(f,110,0,v->selected<10u?v->selected+1u:0u,true);
+    }
+    box(f,0,9,128,1,true);
+    text(f,0,11,"+12",3,1,true);text(f,12,22,"0",1,1,true);text(f,0,33,"-12",3,1,true);
+    for(unsigned x=22;x<=125;x+=3)pixel(f,x,25,true);
+    for(unsigned i=0;i<3u;++i) {
+        unsigned x=v->parametric?eq_x(i==0u?100u:i==1u?1000u:i==2u?10000u:20000u):22u+i*34u;
+        for(unsigned y=13;y<=39;y+=7)pixel(f,x,y,true);
+    }
+    unsigned xs[10],ys[10],order[10],count=0;
+    for(unsigned i=0;i<10u;++i) {
+        if(!v->known[i] || v->gain[i]>240u || (v->parametric && (v->frequency[i]<20u || v->frequency[i]>20000u)))continue;
+        xs[i]=v->parametric?eq_x(v->frequency[i]):22u+(i*103u+4u)/9u;
+        ys[i]=eq_y(v->gain[i]);unsigned at=count;
+        while(at && xs[order[at-1u]]>xs[i]){order[at]=order[at-1u];--at;}
+        order[at]=i;++count;
+    }
+    for(unsigned i=1;i<count;++i)eq_line(f,xs[order[i-1u]],ys[order[i-1u]],xs[order[i]],ys[order[i]]);
+    for(unsigned pass=0;pass<2u;++pass) for(unsigned j=0;j<count;++j) {
+        unsigned i=order[j],x=xs[i],y=ys[i];
+        bool selected=!v->apply && i==v->selected;
+        if(selected!=(pass==1u))continue;
+        if(selected) {
+            for(unsigned yy=11;yy<=39;yy+=3)pixel(f,x,yy,true);
+            for(int oy=-2;oy<=2;++oy)for(int ox=-2;ox<=2;++ox) {
+                int xx=(int)x+ox,yy=(int)y+oy;
+                if(xx<22 || xx>127 || yy<11 || yy>39)continue;
+                bool edge=ox==-2 || ox==2 || oy==-2 || oy==2;
+                pixel(f,(unsigned)xx,(unsigned)yy,edge);
+            }
+        } else {
+            /* Hollow diamonds keep overlapping control points distinct. */
+            pixel(f,x,y,false);
+            if(x>22u)pixel(f,x-1u,y,true);
+            if(x<125u)pixel(f,x+1u,y,true);
+            if(y>11u)pixel(f,x,y-1u,true);
+            if(y<39u)pixel(f,x,y+1u,true);
+        }
+    }
+    box(f,0,42,128,1,true);
+    if(v->apply) {
+        box(f,0,44,128,1,true);box(f,0,52,128,1,true);
+        pixel(f,0,48,true);pixel(f,127,48,true);text(f,31,45,"APPLY CURVE",11,1,true);
+        if(v->status)text(f,0,56,v->status,21,1,true);
+    } else if(v->parametric) {
+        eq_value(f,2,45,v->values[1],v->field==1u,v->editing);
+        eq_value(f,86,45,v->values[0],v->field==0u,v->editing);
+        text(f,2,56,"Q",1,1,true);eq_value(f,14,56,v->values[2],v->field==2u,v->editing);
+        eq_value(f,86,56,v->values[3],v->field==3u,v->editing);
+    } else {
+        text(f,2,45,"GAIN",4,1,true);eq_value(f,86,45,v->values[0],v->field==0u,v->editing);
+        text(f,22,56,"B1",2,1,true);text(f,66,56,"B5",2,1,true);text(f,110,56,"B10",3,1,true);
+    }
+    if(v->status && !v->apply && strcmp(v->status,"DRAFT")) {
+        box(f,0,55,128,9,false);text(f,0,56,v->status,21,1,true);
+    }
+}
