@@ -9,6 +9,7 @@
 #define OMNI_EQ_FLAT 42u
 #define OMNI_EQ_DISCARD 43u
 void omni_eq_menu_begin(unsigned control,omni_settings_menu_io io);
+void omni_eq_menu_express(unsigned control,omni_settings_menu_io io);
 void omni_eq_menu_close(void);
 bool omni_eq_menu_open(void);
 void omni_eq_menu_event(omni_control_kind_t kind);

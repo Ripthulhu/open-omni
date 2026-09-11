@@ -14,6 +14,7 @@ void omni_settings_menu_live_poll(uint32_t now);
 bool omni_settings_menu_enabled(void);
 bool omni_settings_menu_open(void);
 void omni_settings_menu_begin(void);
+void omni_settings_menu_jump_eq(unsigned control);
 void omni_settings_menu_close(void);
 bool omni_settings_menu_event(omni_control_kind_t kind);
 void omni_settings_menu_dial(int step);

@@ -250,6 +250,11 @@ void omni_ui_poll(void)
         entry[0]=++button_total;entry[1]=now;
         entry[2]=(uint32_t)event.kind|((uint32_t)event.origin<<8)|((uint32_t)event.raw<<16);
         bool was_open=omni_mixer_ui_open();
+        if(event.kind==OMNI_CONTROL_BACK && !was_open) {
+            int16_t vdb;uint8_t vm;audio_probe_volume_snapshot(&vdb,&vm);
+            (void)audio_probe_local(vdb,(uint8_t)(vm?0u:1u));
+            woke=1;continue;
+        }
         if(event.kind==OMNI_CONTROL_BIAS_0 || event.kind==OMNI_CONTROL_BIAS_1) {
             omni_source_mix mix;omni_mixer_ui_bias_snapshot(&mix,NULL);
             /* Headset sends a distinct D206/07 pair while in source-bias

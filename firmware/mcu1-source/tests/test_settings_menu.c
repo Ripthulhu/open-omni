@@ -1,5 +1,6 @@
 #include "settings_menu.h"
 #include "mixer_ui.h"
+#include "eq_menu.h"
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
@@ -47,5 +48,9 @@ int main(void)
     assert(omni_mixer_ui_event(OMNI_CONTROL_REMOTE_MENU_ENTER));assert(omni_mixer_ui_open());
     assert(omni_mixer_ui_event(OMNI_CONTROL_REMOTE_MENU_ENTER));assert(omni_mixer_ui_open());
     assert(omni_mixer_ui_event(OMNI_CONTROL_MENU));assert(!omni_mixer_ui_open());
+    /* Back-hold from home jumps straight into the EQ on the band list. */
+    {omni_control_event_t bh={OMNI_CONTROL_BACK_HOLD_UNKNOWN,OMNI_CONTROL_LOCAL_BACK,2};
+     assert(omni_mixer_ui_control(&bh));}
+    assert(omni_mixer_ui_open() && omni_eq_menu_open());
     puts("settings navigation, commit/cancel, rejection and bounds pass");return 0;
 }

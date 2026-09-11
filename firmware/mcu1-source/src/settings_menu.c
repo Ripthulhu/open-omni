@@ -16,7 +16,7 @@ static const item display[]={
 static const item inputs[]={{"USB2 / USB3",36,0,1}};
 static const struct {const item *items;unsigned count;} groups[]={
  {headset,6},{microphone,5},{bluetooth,3},{display,4},{inputs,1}};
-static const char *const categories[]={"LINE OUT","HEADSET","MICROPHONE","BLUETOOTH","DISPLAY","INPUTS"};
+static const char *const categories[]={"MIXER","HEADSET","MICROPHONE","BLUETOOTH","DISPLAY","INPUTS"};
 static omni_settings_menu_io io;
 static bool opened,editing,feedback;
 static unsigned category,row,value,depth;
@@ -27,6 +27,15 @@ bool omni_settings_menu_enabled(void) {return io.read && io.write;}
 bool omni_settings_menu_open(void) {return opened;}
 void omni_settings_menu_begin(void) {omni_eq_menu_close();opened=true;depth=0;editing=false;feedback=false;message=0;}
 void omni_settings_menu_close(void) {omni_eq_menu_close();opened=false;editing=false;feedback=false;message=0;}
+void omni_settings_menu_jump_eq(unsigned control)
+{
+    if(!omni_settings_menu_enabled()) return;
+    for(unsigned c=1;c<=sizeof(groups)/sizeof(groups[0]);++c)
+        for(unsigned r=0;r<groups[c-1u].count;++r)
+            if(groups[c-1u].items[r].id==control) {category=c;row=r;}
+    opened=true;depth=1;editing=false;feedback=false;message=0;
+    omni_eq_menu_express(control,io);
+}
 bool omni_settings_menu_event(omni_control_kind_t kind)
 {
     if(omni_eq_menu_open()) {omni_eq_menu_event(kind);return false;}
@@ -107,7 +116,7 @@ void omni_settings_menu_render(uint8_t frame[1024])
 {
     if(omni_eq_menu_open()) {omni_eq_menu_render(frame);return;}
     omni_settings_view v={0};
-    v.title=depth?categories[category]:"SETTINGS";
+    v.title=depth?categories[category]:"MENU";
     v.count=depth?groups[category-1u].count:6u;
     v.selected=depth?row:category;v.editing=editing;
     unsigned first=v.selected/4u*4u;

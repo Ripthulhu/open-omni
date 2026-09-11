@@ -200,8 +200,8 @@ void omni_menu_ui_render(uint8_t f[1024],const omni_menu_view *v)
         for(selected=0;selected<4u && !v->input[selected].available;++selected) {}
         ordinal=0;
     }
-    text(f,0,0,v->detail?names[selected]:"LINEOUT MIX",11,1,true);
-    if(v->detail) text(f,92,0,"L.OUT",5,1,true);
+    text(f,0,0,v->detail?names[selected]:"MIXER",11,1,true);
+    if(v->detail) text(f,92,0,"MIX",5,1,true);
     else {number(f,110,0,count?ordinal+1u:0u,true);text(f,116,0,"/",1,1,true);number(f,122,0,count,true);}
     box(f,0,9,128,1,true);
     if(!v->detail) {

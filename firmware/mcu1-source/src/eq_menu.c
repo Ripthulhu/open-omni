@@ -23,6 +23,11 @@ void omni_eq_menu_begin(unsigned id,omni_settings_menu_io callbacks)
     depth=row=band=0;editing=feedback=dirty=confirm=false;message=0;
 }
 void omni_eq_menu_close(void) {opened=false;editing=false;}
+void omni_eq_menu_express(unsigned id,omni_settings_menu_io callbacks)
+{
+    omni_eq_menu_begin(id,callbacks);
+    if(io.write(base()+OMNI_EQ_BEGIN,0)) {depth=1;row=0;feedback=false;dirty=true;}
+}
 bool omni_eq_menu_open(void) {return opened;}
 void omni_eq_menu_event(omni_control_kind_t kind)
 {

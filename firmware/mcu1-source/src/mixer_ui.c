@@ -32,6 +32,13 @@ bool omni_mixer_ui_control(const omni_control_event_t *event)
 bool omni_mixer_ui_event(omni_control_kind_t kind)
 {
     init();
+    if(kind==OMNI_CONTROL_BACK_HOLD_UNKNOWN) {
+        if(!omni_mixer_ui_open() && omni_settings_menu_enabled()) {
+            omni_settings_menu_begin();omni_settings_menu_jump_eq(12u);
+            ++revision;return true;
+        }
+        return false;
+    }
     if(omni_settings_menu_enabled()) {
         bool open=omni_mixer_ui_open();
         if(kind==OMNI_CONTROL_REMOTE_MENU_EXIT || (kind==OMNI_CONTROL_MENU && open)) {
