@@ -79,8 +79,17 @@ static bool draft_write(unsigned id,unsigned value)
     if(channel>=3u) return false;
     if(field==OMNI_EQ_BEGIN || field==OMNI_EQ_FLAT) return draft_begin(channel,field==OMNI_EQ_FLAT);
     if(!have_draft[channel]) return false;
-    if(field==OMNI_EQ_APPLY) {bool ok=submit(12u+channel,drafts[channel],channel?78u:128u);if(ok)live_pending[channel]=false;return ok;}
-    if(field==OMNI_EQ_DISCARD) {live_pending[channel]=false;have_draft[channel]=false;restore_pending[channel]=have_baseline[channel];return true;}
+    if(field==OMNI_EQ_APPLY) {bool ok=submit(12u+channel,drafts[channel],channel?78u:128u);
+        if(ok){live_pending[channel]=false;memcpy(baseline[channel],drafts[channel],channel?78u:128u);
+            baseline_len[channel]=(uint8_t)(channel?78u:128u);have_baseline[channel]=true;}
+        return ok;}
+    if(field==OMNI_EQ_DISCARD) {
+        live_pending[channel]=false;restore_pending[channel]=have_baseline[channel];
+        if(have_baseline[channel]) {
+            memcpy(drafts[channel],baseline[channel],baseline_len[channel]);
+            drafts[channel][0]=(uint8_t)(channel==1u?8u:4u);have_draft[channel]=true;
+        } else have_draft[channel]=false;
+        return true;}
     if(field>=40u) return false;
     unsigned kind=field/10u,band=field%10u;
     uint8_t *p=drafts[channel]+68u+(channel?band:6u*band);

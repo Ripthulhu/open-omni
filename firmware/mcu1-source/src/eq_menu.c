@@ -140,7 +140,7 @@ static void graph(uint8_t frame[1024])
         if(editing && kind==v.field){n=value;known=true;}
         if(known)parameter(v.values[kind],kind,n);else strcpy(v.values[kind],"--");
     }
-    v.status=message?message:feedback && io.status?io.status():dirty?"DRAFT":0;
+    v.status=message?message:v.apply && feedback && io.status?io.status():0;
     omni_eq_ui_render(frame,&v);
 }
 void omni_eq_menu_render(uint8_t frame[1024])
