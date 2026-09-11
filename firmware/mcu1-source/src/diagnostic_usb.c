@@ -88,6 +88,9 @@ static volatile int32_t recovery_driver;
 static volatile uint8_t recovery_commit;
 static uint8_t request[64] __attribute__((aligned(4)));
 static uint8_t response[64] __attribute__((aligned(4))) = {1};
+#define OMNI_HID_OUT_EP 0x01u
+static uint8_t hid_out[64] __attribute__((aligned(4)));
+static class_handle_t hid_handle;
 /* NATIVE_COMMAND_MAILBOX_BEGIN: one IRQ producer, one main-loop consumer.
  * phase is published last; pending/active entries cannot be overwritten.
  * Coherent inactive-bank publication never waits inside the USB interrupt. */
@@ -402,12 +405,12 @@ static void am_txring_teardown(void)
 static uint8_t device_desc[] = {18,1,0,2,0xef,2,1,64,0x38,0x10,0x90,0x22,0,0xb0,1,2,3,1};
 static uint8_t report_desc[] = {
     0x06,0xc0,0xff,0x09,1,0xa1,1,0x85,1,0x15,0,0x26,0xff,0,
-    0x75,8,0x95,63,0x09,1,0xb1,2,0x09,1,0x81,2,0xc0
+    0x75,8,0x95,63,0x09,1,0xb1,2,0x09,1,0x81,2,0x09,1,0x91,2,0xc0
 };
 #define config_desc omni_audio_config
 static uint8_t string_buf[126] __attribute__((aligned(4)));
-static usb_device_endpoint_struct_t endpoints[] = {{0x81,USB_ENDPOINT_INTERRUPT,64,10}};
-static usb_device_interface_struct_t interface[] = {{0,{1,endpoints},NULL}};
+static usb_device_endpoint_struct_t endpoints[] = {{0x81,USB_ENDPOINT_INTERRUPT,64,10},{0x01,USB_ENDPOINT_INTERRUPT,64,1}};
+static usb_device_interface_struct_t interface[] = {{0,{2,endpoints},NULL}};
 static usb_device_interfaces_struct_t interfaces[] = {{3,0,0,OMNI_HID_INTERFACE,interface,1}};
 static usb_device_interface_list_t lists[] = {{1,interfaces}};
 static usb_device_class_struct_t hid_class = {lists,kUSB_DeviceClassTypeHid,1};
@@ -1785,6 +1788,12 @@ static usb_status_t hid_callback(class_handle_t handle,uint32_t event,void *para
     (void)handle;
     usb_device_hid_report_struct_t *r=param;
     if (event==kUSB_DeviceHidEventSendResponse) return kStatus_USB_Success;
+    if (event==kUSB_DeviceHidEventRecvResponse) {
+        if (hid_out[0]==1u && hid_out[1]==76u)
+            omni_ui_external_chunk(hid_out[4]|((unsigned)hid_out[5]<<8),hid_out+7,hid_out[6],omni_ui_milliseconds());
+        if (configuration==1u) (void)USB_DeviceHidRecv(hid_handle,OMNI_HID_OUT_EP,hid_out,64);
+        return kStatus_USB_Success;
+    }
     if (event==kUSB_DeviceHidEventSetIdle || event==kUSB_DeviceHidEventGetIdle)
         return kStatus_USB_Success;
     if (event!=kUSB_DeviceHidEventGetReport && event!=kUSB_DeviceHidEventSetReport &&
@@ -1811,7 +1820,9 @@ static usb_status_t device_callback(usb_device_handle handle,uint32_t event,void
     switch(event) {
     case kUSB_DeviceEventSetConfiguration:
         if (*(uint8_t *)param>1) break;
-        configuration=*(uint8_t *)param; return kStatus_USB_Success;
+        configuration=*(uint8_t *)param;
+        if (configuration==1u && hid_handle) (void)USB_DeviceHidRecv(hid_handle,OMNI_HID_OUT_EP,hid_out,64);
+        return kStatus_USB_Success;
     case kUSB_DeviceEventGetConfiguration:
         *(uint8_t *)param=configuration; return kStatus_USB_Success;
     case kUSB_DeviceEventSetInterface:
@@ -2139,6 +2150,7 @@ int main(void)
     omni_sof_capture_status(&sof_capture,sof_status);
     if (USB_DeviceClassInit(kUSB_ControllerLpcIp3511Fs0,&class_list,&device)!=kStatus_USB_Success)
         Fault_Handler();
+    hid_handle=classes[0].classHandle;
     /* The retained updater can hand off without a host-visible removal.
      * Establish a detached interval using our initialized controller. */
     if (USB_DeviceStop(device)!=kStatus_USB_Success) Fault_Handler();

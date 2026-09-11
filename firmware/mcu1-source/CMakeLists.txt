@@ -34,7 +34,7 @@ if(CMAKE_CROSSCOMPILING)
   string(REPLACE "#define USB_DEVICE_CONFIG_SELF_POWER (1U)" "#define USB_DEVICE_CONFIG_SELF_POWER (0U)" USB_CONFIG "${USB_CONFIG}")
   # LPC55 USB0 FS has five logical endpoints (UM11126 ch.40); use EP4 for the UAC2
   # async feedback IN endpoint. The SDK default caps at four.
-  string(REPLACE "#define USB_DEVICE_CONFIG_ENDPOINTS (4U)" "#define USB_DEVICE_CONFIG_ENDPOINTS (5U)" USB_CONFIG "${USB_CONFIG}")
+  string(REPLACE "#define USB_DEVICE_CONFIG_ENDPOINTS (4U)" "#define USB_DEVICE_CONFIG_ENDPOINTS (6U)" USB_CONFIG "${USB_CONFIG}")
   file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/usb_device_config.h "${USB_CONFIG}")
   add_executable(omni_mcu1.elf src/startup.S src/board.c src/diagnostic_usb.c
     src/microphone.c src/settings_menu.c src/eq_menu.c src/settings_menu_native.c src/mixer_control.c src/mixer.c src/mixer_ui.c src/source_mix.c src/home_ui.c src/eq_response.c src/ui.c src/display.c src/display_lpc5528.c src/rotary.c src/usb_guard.c src/controls.c src/control_action.c

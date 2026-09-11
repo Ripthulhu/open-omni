@@ -7,7 +7,7 @@
 int main(void)
 {
     const uint8_t *b=omni_audio_config;
-    assert(sizeof(omni_audio_config)==355u && b[2]+256u*b[3]==355u && b[4]==5u);
+    assert(sizeof(omni_audio_config)==362u && b[2]+256u*b[3]==362u && b[4]==5u);
     const char *names[]={"Omni","Omni USB1","omni-a-test","USB1 Audio",
                          "USB1 Playback","USB1 Microphone","USB1 Control"};
     assert(!omni_usb_string(0,"omni-a-test"));
@@ -43,7 +43,7 @@ int main(void)
                 if(d[2]==3) assert(d[3]==5 && size==(alt==1?388u:582u) && d[6]==1);
                 else assert(d[2]==0x84 && d[3]==0x11 && size==4 && d[6]==1);
             } else if(iface==3) assert(alt==1 && d[2]==0x83 && d[3]==0x05 && size==98 && d[6]==1);
-            else {assert(iface==4 && d[2]==0x81 && d[3]==3 && size==64 && d[6]==10);}
+            else {assert(iface==4 && (d[2]==0x81 || d[2]==1u) && d[3]==3 && size==64 && (d[6]==10 || d[6]==1));}
         } else if(d[1]==0x24 && (iface==0 || iface==2)) {
             unsigned mic=iface==2;ac_bytes[mic]+=n;
             if(d[2]==1) assert(n==9 && d[3]==0 && d[4]==2 && d[6]==(mic?46:64) && !d[7]);
@@ -62,7 +62,7 @@ int main(void)
                 assert(d[4]==(iface==1 && alt==2?3:2) && d[5]==(iface==1 && alt==2?24:16));++formats;}
         } else if(d[1]==0x25) {
             assert(n==8 && ((iface==1 && last_ep==3)||(iface==3 && last_ep==0x83)));
-        } else {assert(d[1]==0x21 && n==9 && iface==4 && pos==OMNI_HID_DESCRIPTOR_OFFSET && d[7]==27);++hid;}
+        } else {assert(d[1]==0x21 && n==9 && iface==4 && pos==OMNI_HID_DESCRIPTOR_OFFSET && d[7]==31);++hid;}
         pos+=n;
     }
     assert(ep_count==expected && seen==31 && ac_bytes[0]==64 && ac_bytes[1]==46);

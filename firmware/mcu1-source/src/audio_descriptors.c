@@ -20,7 +20,7 @@ const char *omni_usb_string(uint8_t index,const char *build_id)
  * per function. HID4 diagnostics is independent. Playback16/24 uses stereo
  * packed PCM with explicit feedback; microphone uses asynchronous mono16 RX. Keep topology constants in audio_usb_layout.h. */
 uint8_t omni_audio_config[OMNI_AUDIO_CONFIG_LENGTH] = {
-    9,2,0x63,1,5,1,0,0x80,50,
+    9,2,0x6a,1,5,1,0,0x80,50,
     8,11,0,2,1,0,0x20,OMNI_USB_STRING_PLAYBACK,
     9,4,0,0,1,1,1,0x20,OMNI_USB_STRING_PLAYBACK,
     9,0x24,1,0,2,1,64,0,0,
@@ -54,7 +54,8 @@ uint8_t omni_audio_config[OMNI_AUDIO_CONFIG_LENGTH] = {
     6,0x24,2,1,2,16,
     7,5,0x83,0x05,98,0,1,
     8,0x25,1,0,0,0,0,0,
-    9,4,4,0,1,3,0,0,OMNI_USB_STRING_CONTROL,
-    9,0x21,0x11,1,0,1,0x22,27,0,
-    7,5,0x81,3,64,0,10
+    9,4,4,0,2,3,0,0,OMNI_USB_STRING_CONTROL,
+    9,0x21,0x11,1,0,1,0x22,31,0,
+    7,5,0x81,3,64,0,10,
+    7,5,0x01,3,64,0,1  /* interrupt OUT for host display frames */
 };
