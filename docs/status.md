@@ -68,6 +68,8 @@ readback from the headset or nonvolatile save is implemented.
 The EQ editor uses a wireframe band graph with hollow markers and a selected
 band cursor. Wireless positions use a logarithmic 20 Hz..20 kHz axis; graphic
 EQ uses band numbers. Unconfirmed gain/frequency edits preview on the graph
-and Back restores the draft point. The line connects control points; it is
-not a predicted or measured DSP frequency response. Q and filter values remain
-visible below the graph.
+and Back restores the draft point. Wireless EQ now shows a calculated, summed filter response with Q-dependent
+width, resonance and slopes. The model uses RBJ biquads at an assumed 48 kHz
+EQ processing rate; the DSP coefficients/rate have not been independently
+verified. Mic/Bluetooth retain band-gain plots because their filter parameters
+are not established. Q and filter values stay visible below the graph.

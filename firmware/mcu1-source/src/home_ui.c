@@ -1,4 +1,5 @@
 #include "home_ui.h"
+#include "eq_response.h"
 #include <stddef.h>
 #include <string.h>
 
@@ -274,12 +275,11 @@ void omni_settings_ui_render(uint8_t f[1024],const omni_settings_view *v)
 /* Control-point plot: interpolating band gains is not a DSP response model. */
 static unsigned eq_x(unsigned frequency)
 {
-    static const unsigned knots[]={20,32,50,80,126,200,317,502,796,1262,2000,3170,5024,7962,12619,20000};
-    if(frequency<=20u) return 22u;
-    if(frequency>=20000u) return 125u;
-    unsigned i=0;while(i<14u && frequency>knots[i+1u]) ++i;
-    unsigned fraction=(frequency-knots[i])*1024u/(knots[i+1u]-knots[i]);
-    return 22u+((i*1024u+fraction)*103u+7680u)/(15u*1024u);
+    if(frequency<=20u)return 22u;
+    if(frequency>=20000u)return 125u;
+    unsigned lo=0,hi=103;
+    while(hi-lo>1u){unsigned mid=(hi+lo)/2u;if(omni_eq_response_frequency(mid)<frequency)lo=mid;else hi=mid;}
+    return 22u+(frequency-omni_eq_response_frequency(lo)<omni_eq_response_frequency(hi)-frequency?lo:hi);
 }
 static unsigned eq_y(unsigned gain)
 {if(gain>240u)gain=240u;return 39u-(gain*28u+120u)/240u;}
@@ -310,6 +310,31 @@ static void eq_value(uint8_t *f,unsigned x,unsigned y,const char *value,bool foc
     text(f,x,y,value,7u,1u,true);
     if(focus && !editing && n) box(f,x,y+7u,n*6u-1u,1u,true);
 }
+static unsigned eq_model(const omni_eq_view *v,int16_t curve[104])
+{
+    static unsigned keys[10][4];
+    static bool valid[10];
+    static int16_t bands[10][104];
+    unsigned budget=1u;bool ready=true;
+    for(unsigned i=0;i<10u;++i) {
+        unsigned key[4]={v->frequency[i],v->gain[i],v->q[i],v->type[i]};
+        if(!v->known[i] || key[0]<20u || key[0]>20001u || key[1]>240u ||
+           (key[0]!=20001u && (key[2]<200u || key[2]>10000u || key[3]<1u || key[3]>5u)))return 0;
+        if(valid[i] && !memcmp(keys[i],key,sizeof(key)))continue;
+        bool flat=key[0]==20001u || ((key[3]==1u || key[3]>=4u) && key[1]==120u);
+        if(!flat && !budget){ready=false;continue;}
+        if(!flat)--budget;
+        for(unsigned x=0;x<104u;++x) bands[i][x]=flat?0:(int16_t)omni_eq_response_band(
+            key[0],key[1],key[2],key[3],omni_eq_response_frequency(x));
+        memcpy(keys[i],key,sizeof(key));valid[i]=true;
+    }
+    if(!ready)return 1;
+    for(unsigned x=0;x<104u;++x) {
+        int sum=0;for(unsigned i=0;i<10u;++i)sum+=bands[i][x];
+        curve[x]=(int16_t)(sum<-1200?-120:sum>1200?120:sum/10);
+    }
+    return 2;
+}
 void omni_eq_ui_render(uint8_t f[1024],const omni_eq_view *v)
 {
     if(!f)return;
@@ -335,17 +360,24 @@ void omni_eq_ui_render(uint8_t f[1024],const omni_eq_view *v)
         while(at && xs[order[at-1u]]>xs[i]){order[at]=order[at-1u];--at;}
         order[at]=i;++count;
     }
-    for(unsigned i=1;i<count;++i)eq_line(f,xs[order[i-1u]],ys[order[i-1u]],xs[order[i]],ys[order[i]]);
+    if(v->parametric) {
+        int16_t curve[104];
+        unsigned model=eq_model(v,curve);
+        if(model==2u) {
+            for(unsigned x=1;x<104u;++x)eq_line(f,21u+x,eq_y((unsigned)(curve[x-1u]+120)),
+                22u+x,eq_y((unsigned)(curve[x]+120)));
+        } else text(f,43,17,model?"CALC...":"NO MODEL",9u,1u,true);
+    } else for(unsigned i=1;i<count;++i)eq_line(f,xs[order[i-1u]],ys[order[i-1u]],xs[order[i]],ys[order[i]]);
     for(unsigned pass=0;pass<2u;++pass) for(unsigned j=0;j<count;++j) {
         unsigned i=order[j],x=xs[i],y=ys[i];
         bool selected=!v->apply && i==v->selected;
         if(selected!=(pass==1u))continue;
         if(selected) {
             for(unsigned yy=11;yy<=39;yy+=3)pixel(f,x,yy,true);
-            for(int oy=-2;oy<=2;++oy)for(int ox=-2;ox<=2;++ox) {
+            for(int oy=-1;oy<=1;++oy)for(int ox=-1;ox<=1;++ox) {
                 int xx=(int)x+ox,yy=(int)y+oy;
                 if(xx<22 || xx>127 || yy<11 || yy>39)continue;
-                bool edge=ox==-2 || ox==2 || oy==-2 || oy==2;
+                bool edge=ox==-1 || ox==1 || oy==-1 || oy==1;
                 pixel(f,(unsigned)xx,(unsigned)yy,edge);
             }
         } else {

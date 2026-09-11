@@ -335,7 +335,7 @@ def run(cc):
                    '-fsanitize=address,undefined', '-fno-omit-frame-pointer',
                    '-I'+str(directory), '-I'+str(SOURCE/'include'), '-I'+str(SOURCE/'src'),
                    str(test), str(SOURCE/'src/controls.c'), str(SOURCE/'src/control_action.c'), str(SOURCE/'src/rotary.c'),
-                   str(SOURCE/'src/volume_scale.c'), str(SOURCE/'src/home_ui.c'), str(SOURCE/'src/source_mix.c'), '-o', str(binary)]
+                   str(SOURCE/'src/volume_scale.c'), str(SOURCE/'src/home_ui.c'), str(SOURCE/'src/eq_response.c'), str(SOURCE/'src/source_mix.c'), '-o', str(binary)]
         subprocess.run(command, check=True, capture_output=True, text=True)
         completed = subprocess.run([str(binary)], check=True, capture_output=True, text=True)
         return {'passed': True, 'result': completed.stdout.strip(), 'limits': __doc__}

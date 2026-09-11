@@ -56,6 +56,7 @@ typedef struct {
 void omni_settings_ui_render(uint8_t frame[1024],const omni_settings_view *view);
 typedef struct {
     const char *title,*status;
+    unsigned q[10],type[10];
     unsigned gain[10],frequency[10]; /* Gain offset: 120 = 0 dB; frequency in Hz. */
     bool known[10],parametric,editing,apply;
     unsigned selected,field; /* Field 0 gain,1 frequency,2 Q,3 filter;4 overview. */

@@ -117,10 +117,13 @@ static void graph(uint8_t frame[1024])
     v.selected=depth==1u?row:band;v.field=depth==2u?row:editing?0u:4u;
     for(unsigned i=0;i<10u;++i) {
         v.known[i]=io.read(base()+i,&v.gain[i]);
-        if(v.parametric) v.known[i]=io.read(base()+10u+i,&v.frequency[i]) && v.known[i];
+        if(v.parametric) v.known[i]=io.read(base()+10u+i,&v.frequency[i]) &&
+            io.read(base()+20u+i,&v.q[i]) && io.read(base()+30u+i,&v.type[i]) && v.known[i];
         if(editing && i==v.selected) {
             if(depth==1u || row==0u)v.gain[i]=value;
             else if(row==1u)v.frequency[i]=value;
+            else if(row==2u)v.q[i]=value;
+            else if(row==3u)v.type[i]=value;
         }
     }
     if(!v.apply) for(unsigned kind=0;kind<4u;++kind) {

@@ -14,12 +14,21 @@ int main(void)
     omni_eq_view v={.title="WIRELESS EQ",.parametric=true};
     strcpy(v.values[0],"-12.0dB");strcpy(v.values[1],"20000Hz");
     strcpy(v.values[2],"10.000");strcpy(v.values[3],"HI SHLF");
-    for(unsigned i=0;i<10;++i){v.known[i]=true;v.gain[i]=i%2?240:0;v.frequency[i]=20000u-i*1900u;}
+    for(unsigned i=0;i<10;++i){v.known[i]=true;v.gain[i]=i%2?240:0;v.frequency[i]=20000u-i*1900u;v.q[i]=1000;v.type[i]=1;}
     for(unsigned selected=0;selected<=10;++selected)for(unsigned field=0;field<5;++field)for(unsigned edit=0;edit<2;++edit) {
         v.selected=selected;v.field=field;v.editing=edit!=0;v.apply=selected==10;
         omni_eq_ui_render(guarded.frame,&v);
         for(unsigned j=0;j<16;++j)assert(guarded.before[j]==0xa5 && guarded.after[j]==0xa5);
     }
+    int16_t broad[104],narrow[104];
+    for(unsigned i=0;i<10;++i){v.gain[i]=120;v.frequency[i]=1000;v.q[i]=500;}
+    v.gain[5]=180;
+    assert(eq_model(&v,broad)==2);
+    v.q[5]=5000;assert(eq_model(&v,narrow)==2);
+    assert(broad[65]>narrow[65]);
+    assert(eq_model(&v,narrow)==2); /* Selection-only redraw reuses cached samples. */
+    v.type[5]=6;assert(eq_model(&v,narrow)==0);
+    v.frequency[5]=20001;assert(eq_model(&v,narrow)==2);
     v.frequency[0]=20001;v.frequency[1]=UINT_MAX;v.gain[2]=UINT_MAX;v.known[3]=false;
     v.apply=false;v.selected=0;omni_eq_ui_render(guarded.frame,&v);
     v.parametric=false;v.status="SETTING FAILED";omni_eq_ui_render(guarded.frame,&v);
