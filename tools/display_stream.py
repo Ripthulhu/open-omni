@@ -31,6 +31,7 @@ class Stream:
     def __init__(self):
         self.h, self.serial = open_device()
         self.seq = 0
+        self.last = None
 
     def _report(self, opcode, body):
         self.seq = (self.seq + 1) % 256
@@ -38,6 +39,13 @@ class Stream:
         if len(pkt) > 64:
             raise ValueError("report too long")
         self.h.send_feature_report(pkt.ljust(64, b"\0"))
+
+    def _out(self, opcode, body):
+        # Interrupt OUT report (hid_write) — no control-transfer overhead, much
+        # faster than feature reports for streaming frame chunks.
+        self.seq = (self.seq + 1) % 256
+        pkt = bytes([1, opcode, self.seq, 0]) + body
+        self.h.write(pkt.ljust(64, b"\0"))
 
     def set_div(self, div):
         self._report(77, struct.pack("<H", div))
@@ -48,8 +56,30 @@ class Stream:
         off = 0
         while off < FRAME:
             n = min(57, FRAME - off)
-            self._report(76, struct.pack("<HB", off, n) + buf[off:off + n])
+            self._out(76, struct.pack("<HB", off, n) + buf[off:off + n])
             off += n
+
+    def frame_delta(self, buf):
+        # Send only the bytes that changed since the last frame, then a 1-byte
+        # write at offset 1023 to trigger the firmware present (offset+count==1024).
+        if self.last is None:
+            self.frame(buf); self.last = bytearray(buf); return
+        i = 0
+        while i < FRAME:
+            if buf[i] != self.last[i]:
+                j = i
+                while j < FRAME and buf[j] != self.last[j]:
+                    j += 1
+                off = i
+                while off < j:
+                    n = min(57, j - off)
+                    self._report(76, struct.pack("<HB", off, n) + buf[off:off + n])
+                    off += n
+                i = j
+            else:
+                i += 1
+        self._report(76, struct.pack("<HB", FRAME - 1, 1) + bytes([buf[FRAME - 1]]))
+        self.last = bytearray(buf)
 
     def close(self):
         self.h.close()
@@ -103,14 +133,33 @@ def bridge(args):
     if args.div:
         s.set_div(args.div); print("SPI divider set to", args.div)
 
+    # Keep only the newest frame; drop anything that arrives while HID is busy so
+    # the panel never falls behind the live stream.
+    state = {"buf": None, "seq": 0}
+
     async def handler(ws):
         async for msg in ws:
             if isinstance(msg, (bytes, bytearray)) and len(msg) == FRAME:
-                s.frame(bytes(msg))
+                state["buf"] = bytes(msg); state["seq"] += 1
+
+    async def sender():
+        loop = asyncio.get_event_loop()
+        sent = 0; n = 0; dropped = 0; t = time.monotonic()
+        while True:
+            if state["seq"] != sent:
+                dropped += state["seq"] - sent - 1
+                sent = state["seq"]; buf = state["buf"]
+                await loop.run_in_executor(None, s.frame, buf)
+                n += 1
+                if n % 60 == 0:
+                    dt = time.monotonic() - t
+                    print("sent %d @ %.1f fps, dropped %d stale" % (n, n / dt, dropped))
+            else:
+                await asyncio.sleep(0.001)
 
     async def run():
         async with websockets.serve(handler, "127.0.0.1", args.port, max_size=None):
-            await asyncio.Future()
+            await sender()
     try:
         asyncio.run(run())
     except KeyboardInterrupt:
