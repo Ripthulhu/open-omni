@@ -1,9 +1,9 @@
 # Open Omni flasher
 
-Install Python 3.10 or newer. Download the `open-omni-firmware` artifact from a
-successful [Firmware build](https://github.com/Ripthulhu/open-omni/actions/workflows/firmware.yml)
-and extract both ZIP layers. The inner `open-omni.zip` contains this flasher and its
-matching firmware. These are development builds; a green build is not a hardware test.
+Install Python 3.10 or newer. Download `open-omni.zip` from
+[Releases](https://github.com/Ripthulhu/open-omni/releases) and extract it.
+It contains this flasher and its matching firmware. Untagged builds are also
+available as `open-omni-firmware` artifacts under Actions. These are development builds; a green build is not a hardware test.
 
 Connect only the transmitter's USB1 to this computer. Close GG and other Omni
 diagnostic tools. Keep the headset disconnected from USB during flashing.

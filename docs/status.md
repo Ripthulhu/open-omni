@@ -10,13 +10,15 @@ are retained. The stock loader owns the acknowledgement metadata page at `0x7F80
 | Wireless headset playback | Working with stock MCU2 and DSP |
 | Native volume/mute | Windows, transmitter and headset controls integrated |
 | Source bias | USB1 versus the selected MCU2 source |
-| USB2/USB3 | Shared selectable MCU2 path; live routing not fully qualified |
+| USB2/USB3 | Source selection implemented; shares one MCU2 path; audio validation incomplete |
+| Line-out mixer | USB1 and line-in levels, mute and master-link controls implemented |
+| USB2/USB3 mixer faders | Not implemented |
 | Microphone capture | Endpoint streams silence; physical PCM path incomplete |
 | Headset settings | Limiter, ANC, transparency, microphone controls and EQ commands |
 | Bluetooth | Settings available; connection status depends on passive reports |
 | OLED | Meters, volume, source bias, battery status and configurable timeout |
 | Spare battery | Charging works; charge/full status, no live percentage estimate |
-| Persistent settings | Not implemented |
+| Saving custom settings | Local UI/mixer state resets on power cycle; persistence not implemented |
 | Endurance and lifecycle | Full qualification incomplete |
 
 ## Controls

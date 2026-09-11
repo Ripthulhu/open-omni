@@ -10,21 +10,25 @@ stay stock.
 
 - USB1 stereo playback: 16/24-bit, 48/96 kHz.
 - Native Windows volume and mute, synchronised with the transmitter and headset dials.
-- Wireless headset playback, source bias and analogue line-out controls.
+- Wireless headset playback, USB2/USB3 source selection and USB1/secondary-source bias.
+- USB1 and line-in faders for analogue line-out, with independent or master-linked volume.
 - Headset, microphone, Bluetooth and display settings through the device menus.
 - OLED meters, headset battery status and spare-battery charging status.
 
-Physical microphone capture is still silent. USB2/USB3 audio routing, persistent
-settings and long-term reliability need more work. The spare battery shows charging
+Physical USB1 microphone capture is still silent. Independent USB2/USB3 mixer
+faders and saving custom settings across power cycles are not implemented.
+Secondary-port audio and long-term reliability still need full validation. The spare battery shows charging
 or full status, not an estimated percentage while charging.
 
 [Hardware support and limitations](docs/status.md)
 
 ## Install
 
-Download **open-omni-firmware** from a successful
-[firmware build](https://github.com/Ripthulhu/open-omni/actions/workflows/firmware.yml).
-Extract the artifact, then extract `open-omni.zip`.
+Download **open-omni.zip** from [Releases](https://github.com/Ripthulhu/open-omni/releases)
+and extract it. Prereleases are development snapshots.
+
+For newer untagged builds, download the `open-omni-firmware` artifact from
+[Actions](https://github.com/Ripthulhu/open-omni/actions/workflows/firmware.yml).
 
 Install Python 3.10 or newer. Connect the transmitter through USB1, then:
 
