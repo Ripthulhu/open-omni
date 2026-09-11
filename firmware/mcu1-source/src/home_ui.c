@@ -282,7 +282,7 @@ static unsigned eq_x(unsigned frequency)
     return 22u+(frequency-omni_eq_response_frequency(lo)<omni_eq_response_frequency(hi)-frequency?lo:hi);
 }
 static unsigned eq_y(unsigned gain)
-{if(gain>240u)gain=240u;return 39u-(gain*28u+120u)/240u;}
+{if(gain>247u)gain=247u;return 39u-(gain*28u+120u)/240u;}
 static void eq_line(uint8_t *f,unsigned ax,unsigned ay,unsigned bx,unsigned by)
 {
     int x=(int)ax,y=(int)ay,dx=(int)bx-x,dy=(int)by-y;
@@ -331,7 +331,7 @@ static unsigned eq_model(const omni_eq_view *v,int16_t curve[104])
     if(!ready)return 1;
     for(unsigned x=0;x<104u;++x) {
         int sum=0;for(unsigned i=0;i<10u;++i)sum+=bands[i][x];
-        curve[x]=(int16_t)(sum<-1200?-120:sum>1200?120:sum/10);
+        curve[x]=(int16_t)(sum<-1200?-120:sum>1270?127:sum/10);
     }
     return 2;
 }

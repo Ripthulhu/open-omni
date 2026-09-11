@@ -10,6 +10,7 @@ typedef struct {
 } omni_settings_menu_io;
 void omni_settings_menu_bind(omni_settings_menu_io io);
 void omni_settings_menu_bind_native(void);
+void omni_settings_menu_live_poll(uint32_t now);
 bool omni_settings_menu_enabled(void);
 bool omni_settings_menu_open(void);
 void omni_settings_menu_begin(void);

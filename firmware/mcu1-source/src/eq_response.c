@@ -24,7 +24,7 @@ unsigned omni_eq_response_frequency(unsigned column)
 int omni_eq_response_band(unsigned hz,unsigned gain,unsigned q,unsigned type,unsigned probe_hz)
 {
     if(hz<20u || hz>20000u || probe_hz<20u || probe_hz>20000u ||
-       gain>240u || q<200u || q>10000u || type<1u || type>5u)return 0;
+       gain>247u || q<200u || q>10000u || type<1u || type>5u)return 0;
     if((type==1u || type>=4u) && gain==120u)return 0;
     uint32_t center=warped(hz),probe=warped(probe_hz),a=amplitude[gain];
     unsigned above=probe>center;

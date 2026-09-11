@@ -3,8 +3,8 @@
 #include <string.h>
 
 static omni_settings_menu_io io;
-static unsigned control,depth,row,band,value;
-static bool opened,editing,feedback,dirty;
+static unsigned control,depth,row,band,value,saved_value,confirm_choice;
+static bool opened,editing,feedback,dirty,confirm;
 static const char *message;
 static unsigned base(void) {return OMNI_EQ_FIELD_BASE+(control-12u)*OMNI_EQ_FIELD_STRIDE;}
 static unsigned field(void) {return base()+band+(depth==2u?row*10u:0u);}
@@ -20,23 +20,29 @@ static void limits(unsigned *min,unsigned *max)
 void omni_eq_menu_begin(unsigned id,omni_settings_menu_io callbacks)
 {
     control=id;io=callbacks;opened=id>=12u && id<=14u;
-    depth=row=band=0;editing=feedback=dirty=false;message=0;
+    depth=row=band=0;editing=feedback=dirty=confirm=false;message=0;
 }
 void omni_eq_menu_close(void) {opened=false;editing=false;}
 bool omni_eq_menu_open(void) {return opened;}
 void omni_eq_menu_event(omni_control_kind_t kind)
 {
     if(kind==OMNI_CONTROL_BACK) {
-        if(editing) editing=false;
+        if(confirm) {confirm=false;message=0;return;}
+        if(editing) {if(depth && value!=saved_value) (void)io.write(selected_id(),saved_value);editing=false;}
         else if(depth==2u) {depth=1;row=band;}
         else if(depth==1u) {depth=0;row=1;}
+        else if(dirty) {confirm=true;confirm_choice=0;message=0;return;}
         else opened=false;
         feedback=false;message=0;return;
     }
     if(kind!=OMNI_CONTROL_SELECT) return;
+    if(confirm) {
+        (void)io.write(base()+(confirm_choice?OMNI_EQ_DISCARD:OMNI_EQ_APPLY),0);
+        confirm=false;dirty=false;opened=false;return;
+    }
     message=0;
     if(editing) {
-        if(io.write(selected_id(),value)) {editing=false;feedback=depth==0u;dirty=depth!=0u;}
+        if(io.write(selected_id(),value)) {editing=false;feedback=true;if(depth)dirty=true;}
         else message="UNAVAILABLE";
         return;
     }
@@ -58,11 +64,12 @@ void omni_eq_menu_event(omni_control_kind_t kind)
     if(!io.read(selected_id(),&value)) {message="NOT LOADED";return;}
     unsigned min,max;limits(&min,&max);
     if(value<min || value>max) {message="INVALID VALUE";return;}
-    editing=true;feedback=false;
+    editing=true;feedback=false;saved_value=value;
 }
 void omni_eq_menu_dial(int step)
 {
     if(!step) return;
+    if(confirm) {confirm_choice=step<0?1u:0u;return;}
     message=0;
     if(!editing) {row=(row+(step<0?1u:count()-1u))%count();return;}
     unsigned min,max;limits(&min,&max);
@@ -74,6 +81,7 @@ void omni_eq_menu_dial(int step)
     }
     int64_t next=(int64_t)value+amount;
     value=next<(int64_t)min?min:next>(int64_t)max?max:(unsigned)next;
+    if(depth) {(void)io.write(selected_id(),value);if(value!=saved_value)dirty=true;}
 }
 static void number(char *out,unsigned n)
 {
@@ -137,6 +145,14 @@ static void graph(uint8_t frame[1024])
 }
 void omni_eq_menu_render(uint8_t frame[1024])
 {
+    if(confirm) {
+        omni_settings_view v={0};
+        v.title="UNSAVED EQ";v.count=2;v.selected=confirm_choice;
+        static const char *const opts[]={"SAVE","DISCARD"};
+        v.labels[0]=opts[0];v.labels[1]=opts[1];
+        v.status="LEAVE WITHOUT SAVING?";
+        omni_settings_ui_render(frame,&v);return;
+    }
     if(depth){graph(frame);return;}
     omni_settings_view v={0};
     static const char *const roots[]={"PRESET","EDIT CURVE","NEW FLAT"};

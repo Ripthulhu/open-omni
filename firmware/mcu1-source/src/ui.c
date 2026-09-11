@@ -272,6 +272,7 @@ void omni_ui_poll(void)
         }
         woke=1;
     }
+    omni_settings_menu_live_poll(now);
     int16_t db; uint8_t mute; audio_probe_volume_snapshot(&db,&mute);
     unsigned charging=omni_charger_indicator(now);
     uint32_t headset_battery=omni_headset_battery_display(now);

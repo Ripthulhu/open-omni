@@ -11,6 +11,23 @@ static uint32_t read_token=0xc0000000u,read_ms;
 static bool read_attempted;
 static uint8_t drafts[3][128];
 static bool have_draft[3];
+static uint8_t baseline[3][128];
+static uint8_t baseline_len[3];
+static bool have_baseline[3],live_pending[3],restore_pending[3];
+static void capture_baseline(unsigned channel)
+{
+    have_baseline[channel]=false;
+    unsigned control=12u+channel,custom=channel==1u?8u:4u;
+    uint8_t raw[60];uint32_t flags,length;
+    if(!omni_dsp_settings_value(control,0,raw)) return;
+    memcpy(&length,raw+12,4);memcpy(&flags,raw+16,4);
+    if(!(flags&1u) || !length) return;
+    uint8_t p[128];size_t n;
+    if(raw[24]==custom) n=omni_dsp_settings_custom(control,p);
+    else n=omni_dsp_settings_eq_preset(control,raw[24],p);
+    if(!n) return;
+    memcpy(baseline[channel],p,n);baseline_len[channel]=(uint8_t)n;have_baseline[channel]=true;
+}
 static bool submit(unsigned id,const uint8_t *p,size_t n)
 {
     if(omni_dsp_settings_busy()) return false;
@@ -21,6 +38,7 @@ static bool submit(unsigned id,const uint8_t *p,size_t n)
 static bool draft_begin(unsigned channel,bool flat)
 {
     if(channel>=3u) return false;
+    if(!have_draft[channel]) capture_baseline(channel);
     if(!flat && have_draft[channel]) return true;
     unsigned control=12u+channel,custom=channel==1u?8u:4u;
     uint8_t p[128];size_t n=0;
@@ -36,7 +54,9 @@ static bool draft_begin(unsigned channel,bool flat)
     if(!n) return false;
     p[0]=(uint8_t)custom;memset(p+1,0,67);
     memcpy(p+1,"Custom",6);memcpy(p+7,"Custom",6);
-    memcpy(drafts[channel],p,n);have_draft[channel]=true;return true;
+    memcpy(drafts[channel],p,n);have_draft[channel]=true;
+    if(flat) live_pending[channel]=true;
+    return true;
 }
 static bool draft_read(unsigned id,unsigned *value)
 {
@@ -59,15 +79,18 @@ static bool draft_write(unsigned id,unsigned value)
     if(channel>=3u) return false;
     if(field==OMNI_EQ_BEGIN || field==OMNI_EQ_FLAT) return draft_begin(channel,field==OMNI_EQ_FLAT);
     if(!have_draft[channel]) return false;
-    if(field==OMNI_EQ_APPLY) return submit(12u+channel,drafts[channel],channel?78u:128u);
+    if(field==OMNI_EQ_APPLY) {bool ok=submit(12u+channel,drafts[channel],channel?78u:128u);if(ok)live_pending[channel]=false;return ok;}
+    if(field==OMNI_EQ_DISCARD) {live_pending[channel]=false;have_draft[channel]=false;restore_pending[channel]=have_baseline[channel];return true;}
     if(field>=40u) return false;
     unsigned kind=field/10u,band=field%10u;
     uint8_t *p=drafts[channel]+68u+(channel?band:6u*band);
+    uint8_t before[6];memcpy(before,p,6u);
     if(kind==0u) {if(value>247u)return false;p[channel?0u:3u]=(uint8_t)((int)value-120);}
     else if(channel) return false;
     else if(kind==1u) {if(value<20u || value>20001u)return false;p[0]=(uint8_t)value;p[1]=(uint8_t)(value>>8);}
     else if(kind==2u) {if(value<200u || value>10000u)return false;p[4]=(uint8_t)value;p[5]=(uint8_t)(value>>8);}
     else {if(value<1u || value>6u)return false;p[2]=(uint8_t)value;}
+    if(memcmp(before,p,6u)) live_pending[channel]=true;
     return true;
 }
 static const uint8_t minutes[]={0,1,5,10,15,30,60};
@@ -163,6 +186,18 @@ static const char *status(void)
         return w[4]==DSP_SETTINGS_ACCEPTED?"SENT":"SETTING FAILED";
     }
     return 0;
+}
+void omni_settings_menu_live_poll(uint32_t now)
+{
+    (void)now;
+    for(unsigned ch=0;ch<3u;++ch) {
+        if(restore_pending[ch]) {
+            if(!have_baseline[ch]) {restore_pending[ch]=false;continue;}
+            if(submit(12u+ch,baseline[ch],baseline_len[ch])) restore_pending[ch]=false;
+        } else if(live_pending[ch]) {
+            if(submit(12u+ch,drafts[ch],ch?78u:128u)) live_pending[ch]=false;
+        }
+    }
 }
 void omni_settings_menu_bind_native(void)
 {omni_settings_menu_bind((omni_settings_menu_io){read_value,write_value,status});}

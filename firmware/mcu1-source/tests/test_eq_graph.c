@@ -9,6 +9,7 @@ int main(void)
     for(unsigned hz=20;hz<=20000;++hz) {unsigned x=eq_x(hz);assert(x>=previous && x>=22 && x<=125);previous=x;}
     assert(eq_x(1000)>=79 && eq_x(1000)<=81);
     assert(eq_y(0)==39 && eq_y(120)==25 && eq_y(240)==11);
+    assert(eq_y(247)==10 && eq_y(241)==11); /* +12.7 dB clears the +12 gridline. */
     struct {uint8_t before[16],frame[1024],after[16];} guarded;
     memset(&guarded,0xa5,sizeof(guarded));
     omni_eq_view v={.title="WIRELESS EQ",.parametric=true};
@@ -33,5 +34,12 @@ int main(void)
     v.apply=false;v.selected=0;omni_eq_ui_render(guarded.frame,&v);
     v.parametric=false;v.status="SETTING FAILED";omni_eq_ui_render(guarded.frame,&v);
     omni_eq_ui_render(guarded.frame,0);for(unsigned i=0;i<1024;++i)assert(guarded.frame[i]==0);
+    for(unsigned i=0;i<10;++i){v.gain[i]=120;v.frequency[i]=1000;v.q[i]=1000;v.type[i]=1;v.known[i]=true;}
+    int16_t hot[104];assert(eq_model(&v,hot)==2);
+    v.gain[3]=240;assert(eq_model(&v,hot)==2);
+    unsigned p240=0;for(unsigned x=0;x<104;++x)if(hot[x]>(int)p240)p240=(unsigned)hot[x];
+    v.gain[3]=247;assert(eq_model(&v,hot)==2);
+    unsigned p247=0;for(unsigned x=0;x<104;++x)if(hot[x]>(int)p247)p247=(unsigned)hot[x];
+    assert(p240>0u && p247>=p240); /* A band past +12.0 dB keeps rising, never drops to flat. */
     puts("EQ graph log axis, bounds, disabled bands and rendering guards pass");return 0;
 }

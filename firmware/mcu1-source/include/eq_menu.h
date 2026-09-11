@@ -7,6 +7,7 @@
 #define OMNI_EQ_BEGIN 40u
 #define OMNI_EQ_APPLY 41u
 #define OMNI_EQ_FLAT 42u
+#define OMNI_EQ_DISCARD 43u
 void omni_eq_menu_begin(unsigned control,omni_settings_menu_io io);
 void omni_eq_menu_close(void);
 bool omni_eq_menu_open(void);

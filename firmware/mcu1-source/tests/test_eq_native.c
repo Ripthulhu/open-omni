@@ -64,6 +64,23 @@ int main(void)
         assert(omni_dsp_settings_custom(id,readback)==n && !memcmp(saved,readback,n));
         assert(io.write(base+OMNI_EQ_FLAT,0));assert(io.read(base,&value) && value==120);
     }
+    {   /* Live apply auto-submits a draft; discard restores the pre-edit profile. */
+        unsigned id=12,base=128;
+        assert(io.write(base+OMNI_EQ_DISCARD,0));       /* drop any leftover draft */
+        omni_settings_menu_live_poll(now);
+        if(omni_dsp_settings_busy()) complete(true);
+        assert(io.write(id,1));complete(true);          /* active = BASS preset */
+        assert(io.write(base+OMNI_EQ_BEGIN,0));         /* fresh draft; capture baseline */
+        assert(io.write(base,200));                     /* raise band0 -> pending */
+        omni_settings_menu_live_poll(now);              /* live submit */
+        assert(omni_dsp_settings_busy());complete(true);
+        assert(wire[2]==0x1bu && wire[4+71]==80u);      /* band0 +8.0 dB signed int8 */
+        assert(io.write(base+OMNI_EQ_DISCARD,0));       /* revert to baseline */
+        omni_settings_menu_live_poll(now);
+        assert(omni_dsp_settings_busy());complete(true);
+        uint8_t bass[128];size_t bn=omni_dsp_settings_eq_preset(12,1,bass);
+        assert(used==bn+4u && !memcmp(wire+4,bass,bn)); /* baseline resent */
+    }
     assert(!io.read(320,&value));assert(!io.write(320,0));
     puts("EQ drafts, signed gains, bounds, full frames, NACK and custom retention pass");return 0;
 }
