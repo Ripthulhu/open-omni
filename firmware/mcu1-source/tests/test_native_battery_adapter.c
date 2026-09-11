@@ -132,6 +132,8 @@ int audio_probe_peer_volume(int16_t db,uint8_t mute,uint32_t revision)
 }
 void omni_mixer_ui_targets(int16_t db,bool mute,uint8_t levels[4])
 { (void)db;(void)mute;memcpy(levels,target,4); }
+void omni_mixer_ui_master(int16_t db,bool mute,int16_t *out_db,uint8_t *out_muted)
+{ *out_db=db;*out_muted=(uint8_t)mute; }
 void usb_audio_ring_gain_ready(bool ready) { bus.ready=ready; }
 static void prepare(uint32_t now,unsigned budget)
 {

@@ -23,6 +23,15 @@ bool omni_mixer_ui_toggle_line_mute(void)
     omni_mix_input s=mixer.input[OMNI_MIX_LINE];
     return omni_mixer_ui_configure(OMNI_MIX_LINE,s.level,s.linked,!s.muted);
 }
+void omni_mixer_ui_master(int16_t db,bool muted,int16_t *out_db,uint8_t *out_muted)
+{
+    init();
+    unsigned master=omni_volume_percent(db);
+    unsigned usb=omni_mixer_effective(&mixer,OMNI_MIX_USB1,master,muted);
+    int16_t target=omni_volume_percent_db(usb);
+    if(mixer.input[0].linked && mixer.input[0].level==100u) target=db;
+    *out_db=target;*out_muted=(uint8_t)(usb==0u);
+}
 uint32_t omni_mixer_ui_revision(void) { return revision; }
 bool omni_mixer_ui_open(void) { return page!=0u || omni_settings_menu_open(); }
 bool omni_mixer_ui_control(const omni_control_event_t *event)

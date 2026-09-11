@@ -148,7 +148,8 @@ static void service(uint32_t now,bool online)
 {
     initialize();observed_ms=now;
     int16_t db; uint8_t muted,ll;audio_probe_master_snapshot(&db,&muted,&observed_revision);
-    if(omni_headset_volume_step(db,muted!=0u,&ll))
+    int16_t hdb;uint8_t hmute;omni_mixer_ui_master(db,muted!=0u,&hdb,&hmute);
+    if(omni_headset_volume_step(hdb,hmute!=0u,&ll))
         (void)omni_headset_gain_desire(&headset,ll,observed_revision,now);
     uint8_t levels[4];omni_mixer_ui_targets(db,muted!=0u,levels);
     (void)omni_native_gain_inputs(&state,5u,levels);
@@ -191,7 +192,8 @@ static void service(uint32_t now,bool online)
             audio_probe_master_snapshot(&db,&muted,&observed_revision);
             omni_mixer_ui_targets(db,muted!=0u,levels);
             (void)omni_native_gain_inputs(&state,5u,levels);
-            if(omni_headset_volume_step(db,muted!=0u,&ll))
+            omni_mixer_ui_master(db,muted!=0u,&hdb,&hmute);
+            if(omni_headset_volume_step(hdb,hmute!=0u,&ll))
                 (void)omni_headset_gain_desire(&headset,ll,observed_revision,now);
         }
     }
