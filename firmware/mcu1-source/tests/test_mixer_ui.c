@@ -90,13 +90,13 @@ static void remote_dial_policy(void)
     assert(omni_mixer_ui_event(OMNI_CONTROL_SELECT)); /* USB1 level immediately adjustable. */
     omni_mixer_ui_status(0,false,s);assert(s[4]==0u && s[5]==1u);
     assert(omni_mixer_ui_dial(headset_step(&buttons,5)));
-    omni_mixer_ui_status(0,false,s);assert((s[8]&255u)==49u);
+    omni_mixer_ui_status(0,false,s);assert((s[8]&255u)==51u);
     assert(omni_mixer_ui_dial(headset_step(&buttons,6)));
     omni_mixer_ui_status(0,false,s);assert((s[8]&255u)==50u);
     assert(omni_mixer_ui_dial(INT_MAX));
-    omni_mixer_ui_status(0,false,s);assert((s[8]&255u)==100u);
-    assert(omni_mixer_ui_dial(INT_MIN));
     omni_mixer_ui_status(0,false,s);assert((s[8]&255u)==0u);
+    assert(omni_mixer_ui_dial(INT_MIN));
+    omni_mixer_ui_status(0,false,s);assert((s[8]&255u)==100u);
     assert(omni_mixer_ui_event(OMNI_CONTROL_BACK)); /* Finish edit first. */
     omni_mixer_ui_status(0,false,s);assert(s[2]==2u && s[5]==0u);
     assert(omni_mixer_ui_event(OMNI_CONTROL_BACK)); /* Then return to sources. */

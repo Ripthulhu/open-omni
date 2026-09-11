@@ -18,14 +18,14 @@ static const struct {const item *items;unsigned count;} groups[]={
  {headset,6},{microphone,5},{bluetooth,3},{display,4},{inputs,1}};
 static const char *const categories[]={"MIXER","HEADSET","MICROPHONE","BLUETOOTH","DISPLAY","INPUTS"};
 static omni_settings_menu_io io;
-static bool opened,editing,feedback;
+static bool opened,editing,feedback,eq_express;
 static unsigned category,row,value,depth;
 static const char *message;
 static const item *current(void) {return &groups[category-1u].items[row];}
 void omni_settings_menu_bind(omni_settings_menu_io callbacks) {io=callbacks;}
 bool omni_settings_menu_enabled(void) {return io.read && io.write;}
 bool omni_settings_menu_open(void) {return opened;}
-void omni_settings_menu_begin(void) {omni_eq_menu_close();opened=true;depth=0;editing=false;feedback=false;message=0;}
+void omni_settings_menu_begin(void) {omni_eq_menu_close();opened=true;depth=0;editing=false;feedback=false;eq_express=false;message=0;}
 void omni_settings_menu_close(void) {omni_eq_menu_close();opened=false;editing=false;feedback=false;message=0;}
 void omni_settings_menu_jump_eq(unsigned control)
 {
@@ -33,12 +33,12 @@ void omni_settings_menu_jump_eq(unsigned control)
     for(unsigned c=1;c<=sizeof(groups)/sizeof(groups[0]);++c)
         for(unsigned r=0;r<groups[c-1u].count;++r)
             if(groups[c-1u].items[r].id==control) {category=c;row=r;}
-    opened=true;depth=1;editing=false;feedback=false;message=0;
+    opened=true;depth=1;editing=false;feedback=false;eq_express=true;message=0;
     omni_eq_menu_express(control,io);
 }
 bool omni_settings_menu_event(omni_control_kind_t kind)
 {
-    if(omni_eq_menu_open()) {omni_eq_menu_event(kind);return false;}
+    if(omni_eq_menu_open()) {omni_eq_menu_event(kind);if(eq_express && !omni_eq_menu_open()){opened=false;eq_express=false;}return false;}
     if(kind==OMNI_CONTROL_BACK) {
         if(editing) editing=false;
         else if(depth) depth=0;
@@ -69,7 +69,7 @@ void omni_settings_menu_dial(int step)
     if(!step) return;
     message=0;feedback=false;
     if(editing) {
-        const item *i=current();int64_t next=(int64_t)value+step;
+        const item *i=current();int64_t next=(int64_t)value-step;
         value=next<(int64_t)i->min?i->min:next>(int64_t)i->max?i->max:(unsigned)next;
     } else {
         unsigned count=depth?groups[category-1u].count:6u;

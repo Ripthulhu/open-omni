@@ -30,7 +30,7 @@ int main(void)
     assert(omni_mixer_ui_dial(INT_MAX));
     accept=false;assert(omni_mixer_ui_event(OMNI_CONTROL_SELECT));assert(!writes);
     accept=true;assert(omni_mixer_ui_event(OMNI_CONTROL_SELECT));
-    assert(writes==1 && last_id==1 && last_value==1);
+    assert(writes==1 && last_id==1 && last_value==0);
     assert(omni_mixer_ui_event(OMNI_CONTROL_BACK)); /* Root. */
     struct {unsigned char a[16],f[1024],b[16];} g;
     memset(&g,0xa5,sizeof(g));
@@ -52,5 +52,7 @@ int main(void)
     {omni_control_event_t bh={OMNI_CONTROL_BACK_HOLD_UNKNOWN,OMNI_CONTROL_LOCAL_BACK,2};
      assert(omni_mixer_ui_control(&bh));}
     assert(omni_mixer_ui_open() && omni_eq_menu_open());
+    assert(omni_mixer_ui_event(OMNI_CONTROL_BACK)); /* Leaving express EQ returns home. */
+    assert(!omni_mixer_ui_open() && !omni_eq_menu_open());
     puts("settings navigation, commit/cancel, rejection and bounds pass");return 0;
 }

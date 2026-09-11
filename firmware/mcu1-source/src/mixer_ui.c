@@ -100,7 +100,7 @@ bool omni_mixer_ui_dial(int step)
     }
     else if(editing) {
         omni_mix_input s=mixer.input[selected];
-        int64_t level=(int64_t)s.level+step;
+        int64_t level=(int64_t)s.level-step;
         if(level<0) level=0;
         if(level>100) level=100;
         (void)omni_mixer_set(&mixer,selected,(unsigned)level,s.linked,s.muted);

@@ -4,7 +4,7 @@
 
 static omni_settings_menu_io io;
 static unsigned control,depth,row,band,value,saved_value,confirm_choice;
-static bool opened,editing,feedback,dirty,confirm;
+static bool opened,editing,feedback,dirty,confirm,express;
 static const char *message;
 static unsigned base(void) {return OMNI_EQ_FIELD_BASE+(control-12u)*OMNI_EQ_FIELD_STRIDE;}
 static unsigned field(void) {return base()+band+(depth==2u?row*10u:0u);}
@@ -20,13 +20,14 @@ static void limits(unsigned *min,unsigned *max)
 void omni_eq_menu_begin(unsigned id,omni_settings_menu_io callbacks)
 {
     control=id;io=callbacks;opened=id>=12u && id<=14u;
-    depth=row=band=0;editing=feedback=dirty=confirm=false;message=0;
+    depth=row=band=0;editing=feedback=dirty=confirm=express=false;message=0;
 }
 void omni_eq_menu_close(void) {opened=false;editing=false;}
 void omni_eq_menu_express(unsigned id,omni_settings_menu_io callbacks)
 {
     omni_eq_menu_begin(id,callbacks);
-    if(io.write(base()+OMNI_EQ_BEGIN,0)) {depth=1;row=0;feedback=false;dirty=true;}
+    express=true;
+    if(io.write(base()+OMNI_EQ_BEGIN,0)) {depth=1;row=0;feedback=false;dirty=false;}
 }
 bool omni_eq_menu_open(void) {return opened;}
 void omni_eq_menu_event(omni_control_kind_t kind)
@@ -35,7 +36,7 @@ void omni_eq_menu_event(omni_control_kind_t kind)
         if(confirm) {confirm=false;message=0;return;}
         if(editing) {if(depth && value!=saved_value) (void)io.write(selected_id(),saved_value);editing=false;}
         else if(depth==2u) {depth=1;row=band;}
-        else if(depth==1u) {depth=0;row=1;}
+        else if(depth==1u) {if(express){if(dirty){confirm=true;confirm_choice=0;message=0;return;}opened=false;}else{depth=0;row=1;}}
         else if(dirty) {confirm=true;confirm_choice=0;message=0;return;}
         else opened=false;
         feedback=false;message=0;return;
