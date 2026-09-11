@@ -234,6 +234,26 @@ static void eq_and_cache(void)
     assert(cached(DSP_SETTING_MIC_VOLUME,out)==0u);
     uint8_t bulk[46]={0xdb,46,0x20,1};bulk[5]=4;bulk[6]=7;bulk[15]=8;bulk[22]=30;bulk[45]=2;
     feed(bulk,46,5);assert(cached(DSP_SETTING_AUTO_OFF,out)==5u && out[24]==30);
+    bulk[12]=1;bulk[13]=2;bulk[18]=1;bulk[20]=7;
+    bulk[24]=2;bulk[25]=3;bulk[26]=9;bulk[27]=2;bulk[29]=1;
+    bulk[34]=1;bulk[35]=6;feed(bulk,46,6);
+    const unsigned ids[]={1,3,4,6,8,9,10,12,13,14};
+    const uint8_t values[][3]={{1},{1,6},{1,2},{1},{1,7,2},{1,7,2},{1,7,2},{2},{9},{3}};
+    const unsigned sizes[]={1,2,2,1,3,3,3,1,1,1};
+    for(unsigned i=0;i<sizeof(ids)/sizeof(ids[0]);++i) {
+        assert(cached(ids[i],out)==5u);
+        assert(!memcmp(out+24,values[i],sizes[i]));
+    }
+    /* Invalid tuples must not replace a complete snapshot. */
+    bulk[12]=255;bulk[20]=255;bulk[35]=255;bulk[24]=255;feed(bulk,46,7);
+    assert(cached(DSP_SETTING_MIC_LED,out)==5u && out[25]==7);
+    assert(cached(DSP_SETTING_SIDETONE,out)==5u && out[25]==6);
+    assert(cached(DSP_SETTING_EQ_WIRELESS,out)==5u && out[24]==2);
+    const uint8_t siblings[]={0,4,1};request(DSP_SETTING_MIC_LED,siblings,3,8);
+    poll(8,true,16);ack(0xe3,0,9);poll(9,false,16);
+    assert(phase()==DSP_SETTINGS_ACCEPTED);
+    assert(cached(DSP_SETTING_BT_CALL,out)&1u);
+    assert(!memcmp(out+24,siblings,3));
     assert(!omni_dsp_settings_value(0,0,out));assert(!omni_dsp_settings_value(1,4,out));
     assert(!omni_dsp_settings_status(2,(uint32_t *)(void *)unchanged));
 }

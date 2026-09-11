@@ -39,7 +39,9 @@ bool omni_settings_menu_event(omni_control_kind_t kind)
             depth=1;row=0;
         } else if(!editing) {
             const item *i=current();
-            if(!io.read(i->id,&value)) value=i->min;
+            if(!io.read(i->id,&value)) {
+                message="NOT LOADED";feedback=false;return false;
+            }
             if(value<i->min || value>i->max) value=i->min;
             editing=true;message=0;
         } else {

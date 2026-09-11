@@ -149,6 +149,9 @@ static void remember(unsigned control,const uint8_t *value,size_t length,uint8_t
     cached_value *c=&cache[control];
     if(c->length==length && !memcmp(c->bytes,value,length)) flags=(uint8_t)(flags|c->flags);
     memcpy(c->bytes,value,length);c->length=(uint8_t)length;c->flags=flags;c->ms=now;
+    if(control>=DSP_SETTING_BT_STARTUP && control<=DSP_SETTING_BT_CALL && length==3u)
+        for(unsigned id=DSP_SETTING_BT_STARTUP;id<=DSP_SETTING_BT_CALL;++id)
+            if(id!=control) cache[id]=*c;
 }
 static void invalidate(unsigned control)
 {
@@ -208,7 +211,28 @@ static void observe_db(const uint8_t *p,size_t n,uint32_t now)
     } else if(n==5u && p[2]==0x43u && p[3]==3u && p[4]>=1u && p[4]<=2u) {
         remember(DSP_SETTING_OUTPUT_MODE,p+4,1,5u,now);
     } else if(n==46u && p[2]==0x20u && p[3]==1u) {
+        /* Stock 0x1e6b0 receives p+2. Full-frame offsets below are verified
+         * through its settings consumer and host feature reports. */
+        if(p[18]<=1u) remember(DSP_SETTING_LIMITER,p+18,1,5u,now);
+        if(p[34]<=1u && p[35]>=1u && p[35]<=10u)
+            remember(DSP_SETTING_SIDETONE,p+34,2,5u,now);
+        if(p[27]>=1u && p[27]<=3u && p[29]<=3u) {
+            uint8_t noise[2]={(uint8_t)(p[29]!=0u),p[27]};
+            remember(DSP_SETTING_MIC_NOISE,noise,2,5u,now);
+        }
+        if(p[12]<=1u && p[20]<=10u && p[13]<=2u) {
+            uint8_t siblings[3]={p[12],p[20],p[13]};
+            remember(DSP_SETTING_BT_STARTUP,siblings,3,5u,now);
+        }
+        /* Snapshot EQ fields identify the preset, not its coefficients. */
+        if(p[24]<=4u) remember(DSP_SETTING_EQ_WIRELESS,p+24,1,5u,now);
+        if(p[26]<=9u) remember(DSP_SETTING_EQ_MIC,p+26,1,5u,now);
+        if(p[25]<=4u) remember(DSP_SETTING_EQ_BT,p+25,1,5u,now);
         if(p[5]<=4u) remember(DSP_SETTING_ANC_STATE,p+5,1,5u,now);
+        if(p[5]>=2u && p[5]<=4u) {
+            uint8_t level=(uint8_t)(5u-p[5]);
+            remember(DSP_SETTING_ANC_LEVEL,&level,1,5u,now);
+        }
         if(p[6]>=1u && p[6]<=10u) remember(DSP_SETTING_TRANSPARENCY,p+6,1,5u,now);
         if(p[14]<=1u) remember(DSP_SETTING_MIC_STATE,p+14,1,5u,now);
         if(p[15]>=1u && p[15]<=10u) remember(DSP_SETTING_MIC_VOLUME,p+15,1,5u,now);

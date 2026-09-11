@@ -18,6 +18,10 @@ int main(void)
     assert(omni_mixer_ui_event(OMNI_CONTROL_BACK));assert(omni_settings_menu_open());
     assert(omni_mixer_ui_dial(-1)); /* Clockwise moves down to Headset. */
     assert(omni_mixer_ui_event(OMNI_CONTROL_SELECT));
+    known=false;
+    assert(omni_mixer_ui_event(OMNI_CONTROL_SELECT));
+    assert(omni_mixer_ui_event(OMNI_CONTROL_SELECT));assert(!writes);
+    known=true;
     assert(omni_mixer_ui_event(OMNI_CONTROL_SELECT)); /* Limiter edit. */
     assert(omni_mixer_ui_dial(INT_MIN));assert(!writes);
     assert(omni_mixer_ui_event(OMNI_CONTROL_BACK));assert(!writes); /* Cancel. */

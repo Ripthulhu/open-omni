@@ -1,10 +1,13 @@
 #include "settings_menu.h"
 #include "dsp_settings.h"
+#include "headset_query.h"
 #include "ui.h"
 #include "mcu2_probe.h"
 #include <string.h>
 static uint32_t token=0x80000000u,submitted;
 static unsigned last_kind;
+static uint32_t read_token=0xc0000000u,read_ms;
+static bool read_attempted;
 static const uint8_t minutes[]={0,1,5,10,15,30,60};
 static bool cached(unsigned id,uint8_t value[36],unsigned *length)
 {
@@ -28,7 +31,19 @@ static bool read_value(unsigned id,unsigned *value)
         *value=mode==2u;return true;
     }
     uint8_t p[36];unsigned n;
-    if(!cached(id,p,&n)) return false;
+    if(!cached(id,p,&n)) {
+        /* Bulk startup already supplies the other menu fields. ANC-off
+         * snapshots omit the remembered ANC level; fetch that field once
+         * while visible, with a bounded retry interval after failure. */
+        uint32_t now=omni_ui_milliseconds();
+        if(id==DSP_SETTING_ANC_LEVEL && !omni_headset_query_busy() &&
+           !omni_dsp_settings_busy() &&
+           (!read_attempted || (uint32_t)(now-read_ms)>=10000u)) {
+            read_attempted=true;read_ms=now;
+            (void)omni_headset_query_request(++read_token,7u,now);
+        }
+        return false;
+    }
     if(id==3u || id==4u) {if(n!=2u)return false;*value=p[0]?p[1]:0;}
     else if(id>=8u && id<=10u) {if(n!=3u)return false;*value=p[id-8u];}
     else if(id==11u) {

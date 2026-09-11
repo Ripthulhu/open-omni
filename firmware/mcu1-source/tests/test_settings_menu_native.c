@@ -8,6 +8,10 @@ static uint8_t cache[20][36],request[128];
 static unsigned lengths[20],request_id,request_length,preset_id,preset_value;
 static uint32_t settings[15]={1,1,5,0,0},backend_token,backend_phase,backend_flags;
 static bool busy;
+static unsigned queries;
+bool omni_headset_query_busy(void) {return false;}
+bool omni_headset_query_request(uint32_t t,unsigned p,uint32_t now)
+{assert(t && p==7u && now==123u);++queries;return true;}
 void omni_settings_menu_bind(omni_settings_menu_io io) {callbacks=io;}
 uint32_t omni_ui_milliseconds(void) {return 123;}
 void omni_ui_settings_status(uint32_t out[15]) {memcpy(out,settings,60);}
@@ -31,6 +35,10 @@ int main(void)
     assert(callbacks.read(32,&value) && value==5);
     assert(callbacks.write(32,8));assert(settings[1]==1 && settings[2]==8 && settings[3]==0);
     assert(!callbacks.read(2,&value));
+    assert(!callbacks.read(6,&value));assert(queries==1);
+    assert(!callbacks.read(6,&value));assert(queries==1);
+    lengths[6]=1;cache[6][0]=2;
+    assert(callbacks.read(6,&value) && value==2 && queries==1);
     assert(!callbacks.write(9,6)); /* Unknown E3 siblings cannot be guessed. */
     lengths[9]=3;cache[9][0]=1;cache[9][1]=3;cache[9][2]=2;
     assert(callbacks.write(9,6));assert(request_id==9 && request_length==3);
