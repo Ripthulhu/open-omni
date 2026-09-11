@@ -1,0 +1,59 @@
+name: Firmware
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: firmware-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  flasher:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r tools/flash/requirements.txt
+      - run: python -c "import hid; print(hid.__file__)"
+      - run: python firmware/rebuild-re/test_mcu1_update.py
+      - run: python -m unittest discover -s tools/flash/tests -v
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Install build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi cmake ninja-build
+          test "$(arm-none-eabi-gcc -dumpfullversion)" = 13.2.1
+      - name: Host tests
+        run: |
+          cmake -S firmware/mcu1-source -B build-host -G Ninja
+          cmake --build build-host
+          ctest --test-dir build-host --output-on-failure
+          python firmware/rebuild-re/test_ui_battery_host.py
+      - name: Fetch pinned SDK revisions
+        run: python firmware/mcu1-source/tools/fetch_dependencies.py vendor
+      - name: Build twice and package
+        run: |
+          python firmware/mcu1-source/tools/build.py --vendor "$PWD/vendor" --build "$PWD/build-arm" --public
+          python firmware/mcu1-source/tools/build.py --vendor "$PWD/vendor" --build "$PWD/build-arm-repeat" --public
+          python tools/package_firmware.py firmware/mcu1-source/releases/omni-a-*
+          unzip -q dist/open-omni.zip -d build-bundle
+          python build-bundle/flash.py --check
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: open-omni-firmware
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30

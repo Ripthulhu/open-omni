@@ -1,0 +1,32 @@
+[
+  {
+    "name": "devices",
+    "url": "https://github.com/nxp-mcuxpresso/mcux-devices-lpc.git",
+    "revision": "fdf4429f3dda7f427bf4ef438a0e85fca083e178"
+  },
+  {
+    "name": "usb",
+    "url": "https://github.com/nxp-mcuxpresso/mcuxsdk-middleware-usb.git",
+    "revision": "b330ba1e98bec0faa1b97fdf772bf81803a05868"
+  },
+  {
+    "name": "core",
+    "url": "https://github.com/nxp-mcuxpresso/mcuxsdk-core.git",
+    "revision": "88e69085dfaab35652ca79fdf3f05c7551eed601"
+  },
+  {
+    "name": "examples",
+    "url": "https://github.com/nxp-mcuxpresso/mcuxsdk-examples.git",
+    "revision": "2a340e10a1105bc0af8e7176bc19148911f4cf12"
+  },
+  {
+    "name": "cmsis",
+    "url": "https://github.com/ARM-software/CMSIS_6.git",
+    "revision": "1c1840af7a7e757d6e2fec3ddb0e5ce0dfcc93c8"
+  },
+  {
+    "name": "legacy-sdk",
+    "url": "https://github.com/nxp-mcuxpresso/mcux-sdk.git",
+    "revision": "8a289764d763ad06e0c3a05c885644ed98b970af"
+  }
+]

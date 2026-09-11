@@ -1,0 +1,3 @@
+# Preserve exact bytes: release IDs hash source files as stored on disk.
+# Avoid CRLF/LF conversion silently changing verified source identities.
+* -text

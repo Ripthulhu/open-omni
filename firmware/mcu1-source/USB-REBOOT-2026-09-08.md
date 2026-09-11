@@ -1,0 +1,24 @@
+# USB reboot sequencing
+
+Cold boot of f0ce passed full code/ACK2 and all ten native Windows volume/mute cases plus ten-second silent duplex with zero errors (hardware214518Z, uac2-windows214539.598696Z). Its preceding warm flash left notifications pending despite passing60s audio. This supports a startup/reconnect dependency but does not prove a single root cause.
+
+Candidate94ff037073adcbed (SHA256 f869affdbecd0da1207d12151384ee5b3a04c44049a115a8c2c78edf1c8426be) adds an explicit USB stop and250ms detached interval after controller initialization and before recovery reset. The watchdog is fed every10ms. USB stop/start failures enter the fault path rather than continuing a nominal reboot.
+
+The loader acknowledgement still waits for host configuration. Before that ROM flash work the app detaches USB, then waits250ms and reconnects. This adds one deliberate re-enumeration per startup, including the already-valid acknowledgement path; it avoids disabling interrupts for ROM operations on a live connection. It does not alter the loader metadata algorithm, bootloader code, MCU2 or DSP. Recovery preparation remains the existing two-phase protocol; only its final reset is changed.250ms is a chosen disconnect policy, not proof of host teardown timing.
+
+Two independent builds match.124 acknowledgement,48 recovery,4 compiled clock/startup cases pass. Compiled lifecycle checks verify successful ordering plus all three Stop and both Run failures and watchdog feed cadence. Existing compiled audio/halt/UI/error/cancellation tests and file/restore/hash verification pass. Hardware comparison pending at preparation time. The host may encounter the initial short-lived enumeration during runtime verification; repeat only read-only verification if needed, never resend a flash/commit based on that failure.
+
+## First hardware result
+
+One flash of94ff passed full285612-byte staged readback and19324-byte runtime code verification, ACK1/driver0 (hardware20260908T215222Z). Without any physical power cycle, all ten native Windows volume/mute cases and ten-second silent duplex passed (uac2-windows20260908T215242.033739Z):999 callbacks, zero host flags/nonzero microphone bytes, zero firmware errors, nine notifications completed and none pending. This is an improvement over the preceding f0ce warm trial, but repeated recovery/return and cold startup remain required evidence.
+
+The new return_source.py helper verifies the installed code before issuing the loader return command exactly once; transport failures during runtime re-enumeration may retry read-only verification, while identity/code/ACK mismatches fail. Mocked tests covered short return write followed by valid runtime, code mismatch preventing the command, runtime mismatch failure, and a transient transport retry; no mock evidence files were written into the hardware release directory.
+
+## Current state — USB reboot improvement verified, 2026-09-08 21:55 UTC
+
+MCU1 now runs `omni-a-94ff037073adcbed`, application SHA256 `f869affdbecd0da1207d12151384ee5b3a04c44049a115a8c2c78edf1c8426be`, code19324 bytes. One flash passed full staged/runtime verification. It adds explicit250ms USB detach intervals before initial attachment, around the host-gated startup flash acknowledgement, and before recovery reset. Watchdog fed every10ms. USB shutdown/start errors stop the normal path. MCU2/DSP/bootloader code unchanged. See USB-REBOOT-2026-09-08.md.
+
+Hardware passed immediately after warm flashing and after TWO software recovery/return cycles without another flash or physical power cycle. Each cycle verified loader identity and installed code before return; return commands each issued once, write64, runtime readback passed without retries. All three native Windows tests passed all ten volume/mute cases and ten-second silent duplex: zero firmware errors, no host flags, pending0, nine notifications completed. Tests215242.033739Z,215357.703600Z,215454.667013Z; recovery215304.419982Z/215429.142927Z; return215329.733081Z/215442.985136Z. Final UI215506Z initialized1 READY8,13frames, invalid0; -30dB muted, streams stopped. No active jobs/captures/flashers or pending user action. User may use controls again.
+
+Cold f0ce baseline before this change passed full readback ACK2 and native controls/duplex after the user's replug (214518Z/214539.598696Z), whereas its preceding warm trial stalled notifications. This comparison supports improved restart behavior, not proof of the unique root cause or full lifecycle reliability. New94ff cold startup, larger reconnect sample, full physical recovery release gate, and wireless audio remain outstanding. Exact physical dial edges per detent still unmeasured. Do not repeat flash to test reboot: enter_recovery.py followed by firmware/rebuild-re/return_source.py can return the verified installed app. Broader original open firmware objective remains incomplete.
+

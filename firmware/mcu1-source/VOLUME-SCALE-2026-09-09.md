@@ -1,0 +1,20 @@
+# Percentage display and USB volume resolution
+
+Measured on Windows2026-09-08 UTC using installed94ff. Original UI used numeric negative dB and a linear dB bar. Windows50% reports-10.24537468dB; the old1dB resolution delivered-10dB, whose linear bar was83.3%. Windows20% delivered-23dB; Windows80% delivered-3dB. Windows caches requested scalar values even when coarse advertised hardware steps quantize the value sent over USB, so changing only the bar cannot make all101 percentages agree.
+
+Source candidate98e1652bb982bd11 uses a fixed UI curve measured from the native endpoint:101 integer-percent dB points plus100 half-percent rounding thresholds. USB master resolution is now1/256dB over the unchanged synthetic-60..0dB prototype range. Dial events advance one percentage point through the same curve. Physical transitions per detent remain separately unmeasured. Digits and bar use one percentage conversion; percent sign is explicit and mute X remains separate. UI snapshot version2 adds rendered display_percent at response offset40. USB remains UAC2/HID and requires no host bridge; this UI profile is not a universal OS percentage standard and is not a measured DSP attenuation table.
+
+Microsoft documents scalar volume as nonlinear/audio-tapered and warns its curve may change: https://learn.microsoft.com/en-us/windows/win32/api/endpointvolume/nf-endpointvolume-iaudioendpointvolume-getmastervolumelevelscalar . Evidence: firmware/rebuild-re/evidence/wsl-audio/volume-scale-20260908T215752Z.json and volume-scale-half-percent-20260908.json. Original volume/mute restored after each measurement.
+
+Two independent builds match application SHA256 aaa0112163d90b7b553e67cc08629df6dbc8ea6aaca4c69ceca8558eb57928c1. Compiled tests pass101 measured integer points,200 rounding-boundary checks,101 fractional-dB controls, integrated encoder/UI, audio/halt/error/cancellation, lifecycle,124ACK/48recovery/4startup cases and image/restore/hash bounds. Hardware percentage test will sweep0..100 in each direction and preserve starting volume/mute. Hardware result pending at preparation time.
+
+## Current installed firmware — percentage scale fixed, 2026-09-09 local / 2026-09-08 22:06 UTC
+
+MCU1 runs `omni-a-98e1652bb982bd11`, SHA256 `aaa0112163d90b7b553e67cc08629df6dbc8ea6aaca4c69ceca8558eb57928c1`, code19836 bytes. Full staged/runtime readback ACK1/driver0 passed (hardware220546Z). Prior94ff entered software recovery with code verified; exactly one new image flash performed. Reboot detach improvements retained.
+
+User's scale bug was real: numericdB/linear-dB bar did not represent Windows' nonlinear percentage, and1dB USB resolution caused many distinct Windows percentages to collide. Changed synthetic prototype USB resolution to1/256dB, added measured percentage conversion, 0..100% digits/bar, one-percent dial events. No Windows bridge required; other OS percentage curves may differ. Actual DSP attenuation still uncharacterized. See VOLUME-SCALE-2026-09-09.md. UI snapshotversion2 includes display_percent at responseoffset40.
+
+Hardware `volume-scale-windows-20260908T220604.309023Z.json` passed ALL101 Windows-to-display plus101 device-to-Windows points, with no firmware errors; original(-30dB,muted) restored. Native ten-case volume/mute plus ten-second silent duplex passed at220631.072495Z:1000callbacks, zero hostflags/nonzero micbytes/errors,109notifications, pending0. User told controls may be used again. Display-frame renders from compiled firmware were visually checked at50%; PNGs0/50/100 retained in release. Full physical detent calibration and broad cold/reconnect lifecycle remain outstanding; wireless audio is still not implemented.
+
+No pending user request for physical action and no running flashers/streams/captures. Source change committed7bd3572; evidence update follows. Current displayed volume after tests should be12% (underlying-30dB), muted. Do not mistake this for12dB or12% linear amplitude. Prior hardware checkpoints below are historical.
+
