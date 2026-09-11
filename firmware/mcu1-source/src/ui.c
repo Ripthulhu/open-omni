@@ -19,6 +19,8 @@
 #include "mcu2_probe.h"
 #include "fsl_device_registers.h"
 #include <string.h>
+/* 30 Hz leaves room for the 20.5 ms framebuffer transfer at 400 kHz. */
+#define UI_FRAME_MS 33u
 static volatile uint32_t milliseconds;
 static omni_display display;
 static omni_rotary rotary;
@@ -121,6 +123,32 @@ static void home_link_snapshot(omni_home_view *view)
     }
 }
 
+/* Display ballistics bridge brief DSP floor readings between meter windows.
+ * Keep raw diagnostic samples unchanged; sustained silence still decays. */
+static struct {
+    uint32_t level[8],peak_ms[8],updated_ms;
+    bool valid;
+} meter_display;
+static void meter_display_update(uint8_t levels[8],uint32_t now)
+{
+    uint32_t elapsed=now-meter_display.updated_ms;
+    for(unsigned i=0;i<8u;++i) {
+        uint32_t target=(uint32_t)levels[i]*1000u;
+        if(!meter_display.valid || target>=meter_display.level[i]) {
+            meter_display.level[i]=target;meter_display.peak_ms[i]=now;
+        } else {
+            uint32_t age=now-meter_display.peak_ms[i];
+            uint32_t decay_ms=age>80u?age-80u:0u;
+            if(decay_ms>elapsed) decay_ms=elapsed;
+            if(decay_ms>1000u) decay_ms=1000u;
+            uint32_t drop=decay_ms*120u; /* 120 percentage points/second. */
+            uint32_t gap=meter_display.level[i]-target;
+            meter_display.level[i]-=drop<gap?drop:gap;
+        }
+        levels[i]=(uint8_t)(meter_display.level[i]/1000u);
+    }
+    meter_display.updated_ms=now;meter_display.valid=true;
+}
 static void home_meter_snapshot(omni_home_view *view)
 {
     uint32_t status[15]={0};
@@ -133,13 +161,18 @@ static void home_meter_snapshot(omni_home_view *view)
         if(gen1 && gen1==status[10] && gen1==gen2) {
             /* First four actual DSP pairs fit page1; no fabricated levels
              * from fader values. Unqualified routes keep their DSP labels. */
+            uint8_t levels[8];
+            for(unsigned i=0;i<8u;++i) levels[i]=meter_level(first+16u+i*4u);
+            meter_display_update(levels,milliseconds);
             for(unsigned i=0;i<4u;++i) {
-                uint8_t left=meter_level(first+16u+i*8u),right=meter_level(first+20u+i*8u);
+                uint8_t left=levels[i*2u],right=levels[i*2u+1u];
                 view->input[i].known=true;view->input[i].level=left>right?left:right;
                 if(i==3u) {view->stereo_known=true;view->left=left;view->right=right;}
             }
+            return;
         }
     }
+    meter_display.valid=false;
 }
 
 static void render(int16_t db,uint8_t mute,uint32_t headset_battery)
@@ -253,7 +286,7 @@ void omni_ui_poll(void)
                 memset(frame,0,sizeof(frame));
                 if(omni_display_present(&display,frame)) blanked=1;
             }
-        } else if(db!=shown_db || mute!=shown_mute || charging!=shown_charger || headset_battery!=shown_headset_battery || blanked || shown_menu!=omni_mixer_ui_revision() || shown_settings!=settings_applied || (awake && (uint32_t)(now-shown_ms)>=100u)) {
+        } else if(db!=shown_db || mute!=shown_mute || charging!=shown_charger || headset_battery!=shown_headset_battery || blanked || shown_menu!=omni_mixer_ui_revision() || shown_settings!=settings_applied || (awake && (uint32_t)(now-shown_ms)>=UI_FRAME_MS)) {
             render(db,mute,headset_battery);
             if(omni_display_present(&display,frame)) {
                 shown_db=db;shown_mute=mute;shown_charger=charging;shown_headset_battery=headset_battery;shown_menu=omni_mixer_ui_revision();shown_settings=settings_applied;++rendered;blanked=0;shown_ms=now;

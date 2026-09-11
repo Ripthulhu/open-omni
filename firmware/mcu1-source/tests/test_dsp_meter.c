@@ -80,16 +80,21 @@ static void eligibility_and_errors(void)
 }
 static void cadence_timeout_wrap(void)
 {
-    setup(UINT32_MAX-50u);poll(UINT32_MAX-50u,true,4);
-    feed(report,76,UINT32_MAX-49u);poll(UINT32_MAX-49u,false,0);
-    assert((status(2,0)&3u)==3u && status(9,0)==50u);
-    poll(48,true,4);assert(bus.used==4);
-    poll(49,true,4);assert(bus.used==8);
-    poll(299,false,0);assert(status(5,299)==1 && !omni_dsp_meter_transport_fault());
+    uint32_t start=UINT32_MAX-20u;
+    uint32_t next=start+OMNI_DSP_METER_QUERY_MS;
+    setup(start);poll(start,true,4);
+    feed(report,76,start+1u);poll(start+1u,false,0);
+    assert((status(2,0)&3u)==3u && status(9,0)==20u);
+    poll(next-1u,true,4);assert(bus.used==4);
+    poll(next,true,4);assert(bus.used==8);
+    uint32_t timeout=next+OMNI_DSP_METER_TIMEOUT_MS;
+    poll(timeout,false,0);assert(status(5,timeout)==1 && !omni_dsp_meter_transport_fault());
     assert(!omni_dsp_meter_busy());
-    poll(300,true,4);assert(bus.used==8); /* No immediate timeout retry. */
-    poll(399,true,4);assert(bus.used==12);
-    feed(report,76,400);poll(400,false,0);
+    poll(timeout+1u,true,4);assert(bus.used==8); /* No immediate timeout retry. */
+    uint32_t retry=timeout+OMNI_DSP_METER_QUERY_MS;
+    poll(retry-1u,true,4);assert(bus.used==8);
+    poll(retry,true,4);assert(bus.used==12);
+    feed(report,76,retry+1u);poll(retry+1u,false,0);
     poll(10000,true,4);assert(bus.used==16);
     feed(report,76,10001);poll(10001,false,0);poll(10001,true,4);
     assert(bus.used==16); /* Missed slots coalesce; no catch-up burst. */

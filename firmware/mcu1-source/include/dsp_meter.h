@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define OMNI_DSP_METER_QUERY_MS 100u
+#define OMNI_DSP_METER_QUERY_MS 40u
 #define OMNI_DSP_METER_TIMEOUT_MS 250u
 #define OMNI_DSP_METER_STALE_MS 500u
 #define OMNI_DSP_METER_FRAME_BYTES 76u

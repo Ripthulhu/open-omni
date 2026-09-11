@@ -418,7 +418,7 @@ int main(void)
      * sending its first byte; expiration is independent of menu priority. */
     assert(omni_native_menu_request(0x104u,true,2,now));menu_start=now;
     while(menu_phase()==REMOTE_MENU_QUEUED) {
-        target[0]=(uint8_t)(20u+(now%30u));tick(now++);assert(now-menu_start<=2001u);
+        target[0]=(uint8_t)(bus.current[0]==20u?21u:20u);tick(now++);assert(now-menu_start<=2001u);
     }
     assert(menu_phase()==REMOTE_MENU_TIMEOUT && bus.menus==menus);
 

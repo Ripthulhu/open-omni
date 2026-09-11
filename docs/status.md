@@ -17,7 +17,7 @@ are retained. The stock loader owns the acknowledgement metadata page at `0x7F80
 | Headset settings | Limiter, ANC, transparency, microphone controls and EQ commands |
 | Custom EQ menus | Ten bands per channel; wireless frequency/gain/Q/filter, microphone and Bluetooth gain |
 | Bluetooth | Settings available; connection status depends on passive reports |
-| OLED | Meters, volume, source bias, battery status and configurable timeout |
+| OLED | 30 Hz refresh, smoothed meters, volume, source bias, battery status and configurable timeout |
 | Spare battery | Charging works; charge/full status, no live percentage estimate |
 | Saving custom settings | Local UI/mixer state resets on power cycle; persistence not implemented |
 | Endurance and lifecycle | Full qualification incomplete |

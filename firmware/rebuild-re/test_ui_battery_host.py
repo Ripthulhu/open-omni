@@ -152,7 +152,7 @@ int main(void)
     assert(pixel(pixels,93,3)); /* Headphone silhouette remains when percentage is unknown. */
     assert(area(pixels,58,0,21,7)==0); /* Spare slot absent. */
     uint8_t baseline[1024];memcpy(baseline,pixels,1024);
-    poll_at(99);assert(presented==1); /* No unchanged redraw before100ms. */
+    poll_at(32);assert(presented==1); /* No unchanged redraw before33ms. */
     battery=42u|(1u<<8);poll_at(1000);
     assert(presented==2 && idle.last_activity==0 && !blanked);
     assert(area(pixels,93,2,9,3)>0 && area(pixels,98,0,30,7)>0);
@@ -161,7 +161,7 @@ int main(void)
     /* Packed headset charging state is cached, but never aliases spare state. */
     battery=42u|(2u<<8);poll_at(2000);
     assert(presented==3 && area(pixels,58,0,21,7)==0 && idle.last_activity==0);
-    poll_at(2099);assert(presented==3);
+    poll_at(2032);assert(presented==3);
     battery=100u|(3u<<8);poll_at(3000);
     assert(presented==4 && area(pixels,104,0,24,7)>0);
     battery=0u|(1u<<8);poll_at(4000);
@@ -185,22 +185,27 @@ int main(void)
     for(unsigned i=0;i<1024u;++i)assert(pixels[i]==0xa5);
     battery=255u;poll_at(70003);for(unsigned i=0;i<1024u;++i)assert(pixels[i]==0xa5);
     menu_open=false;++menu_revision;poll_at(70004);assert(area(pixels,83,0,15,7)>0);
-    /* Meter snapshots update at100ms, not by waking/extending OLED idle. */
+    /* Meter snapshots update at33ms, not by waking/extending OLED idle. */
     start(0);memcpy(baseline,pixels,1024);
     meters_available=meters_fresh=true;
     for(unsigned i=0;i<8;i++)meter_values[i]=-4800;
-    poll_at(99);assert(presented==1 && !memcmp(pixels,baseline,1024));
-    poll_at(100);assert(presented==2 && idle.last_activity==0);
+    poll_at(32);assert(presented==1 && !memcmp(pixels,baseline,1024));
+    poll_at(33);assert(presented==2 && idle.last_activity==0);
     assert(area(pixels,40,15,20,3)>0 && memcmp(pixels,baseline,1024));
     memcpy(baseline,pixels,1024);meter_values[0]=-9600;meter_values[1]=-9600;++meter_generation;
-    poll_at(199);assert(presented==2 && !memcmp(pixels,baseline,1024));
-    poll_at(200);assert(presented==3 && idle.last_activity==0);
-    assert(!area(pixels,40,15,31,3));
+    poll_at(65);assert(presented==2 && !memcmp(pixels,baseline,1024));
+    poll_at(66);assert(presented==3 && idle.last_activity==0);
+    assert(area(pixels,40,15,20,3)>0); /* A brief DSP floor cannot erase the bar. */
+    meter_values[0]=meter_values[1]=-4800;++meter_generation;poll_at(99);
+    assert(area(pixels,40,15,20,3)>0);
+    meter_values[0]=meter_values[1]=-9600;++meter_generation;poll_at(132);
+    assert(area(pixels,40,15,20,3)>0);
+    poll_at(1000);assert(!area(pixels,40,15,31,3)); /* Sustained silence empties it. */
     /* Cross-generation and stale pages render unknown, never mismatched samples. */
-    meter_mismatch=true;poll_at(300);assert(area(pixels,53,16,6,1)==6);
-    meter_mismatch=false;meters_fresh=false;poll_at(400);assert(area(pixels,53,16,6,1)==6);
+    meter_mismatch=true;poll_at(1100);assert(area(pixels,53,16,6,1)==6);
+    meter_mismatch=false;meters_fresh=false;poll_at(1200);assert(area(pixels,53,16,6,1)==6);
     meters_fresh=true;
-    for(unsigned t=1000;t<60000;t+=1000) {meter_values[0]=-(int32_t)(t%9600);++meter_generation;poll_at(t);}
+    for(unsigned t=2000;t<60000;t+=1000) {meter_values[0]=-(int32_t)(t%9600);++meter_generation;poll_at(t);}
     assert(idle.last_activity==0);poll_at(60000);assert(blanked);
     n=presented;++meter_generation;poll_at(60100);assert(blanked && presented==n);
     /* Whole display retries retain render generation/time until accepted. */
