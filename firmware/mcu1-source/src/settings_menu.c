@@ -1,4 +1,5 @@
 #include "settings_menu.h"
+#include "eq_menu.h"
 #include "home_ui.h"
 #include <string.h>
 typedef struct {const char *name;unsigned id,min,max;} item;
@@ -24,10 +25,11 @@ static const item *current(void) {return &groups[category-1u].items[row];}
 void omni_settings_menu_bind(omni_settings_menu_io callbacks) {io=callbacks;}
 bool omni_settings_menu_enabled(void) {return io.read && io.write;}
 bool omni_settings_menu_open(void) {return opened;}
-void omni_settings_menu_begin(void) {opened=true;depth=0;editing=false;feedback=false;message=0;}
-void omni_settings_menu_close(void) {opened=false;editing=false;feedback=false;message=0;}
+void omni_settings_menu_begin(void) {omni_eq_menu_close();opened=true;depth=0;editing=false;feedback=false;message=0;}
+void omni_settings_menu_close(void) {omni_eq_menu_close();opened=false;editing=false;feedback=false;message=0;}
 bool omni_settings_menu_event(omni_control_kind_t kind)
 {
+    if(omni_eq_menu_open()) {omni_eq_menu_event(kind);return false;}
     if(kind==OMNI_CONTROL_BACK) {
         if(editing) editing=false;
         else if(depth) depth=0;
@@ -39,6 +41,7 @@ bool omni_settings_menu_event(omni_control_kind_t kind)
             depth=1;row=0;
         } else if(!editing) {
             const item *i=current();
+            if(i->id>=12u && i->id<=14u) {omni_eq_menu_begin(i->id,io);return false;}
             if(!io.read(i->id,&value)) {
                 message="NOT LOADED";feedback=false;return false;
             }
@@ -53,6 +56,7 @@ bool omni_settings_menu_event(omni_control_kind_t kind)
 }
 void omni_settings_menu_dial(int step)
 {
+    if(omni_eq_menu_open()) {omni_eq_menu_dial(step);return;}
     if(!step) return;
     message=0;feedback=false;
     if(editing) {
@@ -101,6 +105,7 @@ static void format(unsigned id,unsigned n,char out[12])
 }
 void omni_settings_menu_render(uint8_t frame[1024])
 {
+    if(omni_eq_menu_open()) {omni_eq_menu_render(frame);return;}
     omni_settings_view v={0};
     v.title=depth?categories[category]:"SETTINGS";
     v.count=depth?groups[category-1u].count:6u;

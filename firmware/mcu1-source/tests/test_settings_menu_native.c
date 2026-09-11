@@ -7,6 +7,7 @@ static omni_settings_menu_io callbacks;
 static uint8_t cache[20][36],request[128];
 static unsigned lengths[20],request_id,request_length,preset_id,preset_value;
 static uint32_t settings[15]={1,1,5,0,0},backend_token,backend_phase,backend_flags;
+size_t omni_dsp_settings_custom(unsigned id,uint8_t out[128]) {(void)id;(void)out;return 0;}
 static bool busy;
 static unsigned queries;
 bool omni_headset_query_busy(void) {return false;}

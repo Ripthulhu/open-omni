@@ -1,0 +1,141 @@
+#include "eq_menu.h"
+#include "home_ui.h"
+#include <string.h>
+
+static omni_settings_menu_io io;
+static unsigned control,depth,row,band,value;
+static bool opened,editing,feedback,dirty;
+static const char *message;
+static unsigned base(void) {return OMNI_EQ_FIELD_BASE+(control-12u)*OMNI_EQ_FIELD_STRIDE;}
+static unsigned field(void) {return base()+band+(depth==2u?row*10u:0u);}
+static unsigned count(void) {return depth==0u?3u:depth==1u?11u:4u;}
+static unsigned selected_id(void) {return depth?field():control;}
+static void limits(unsigned *min,unsigned *max)
+{
+    *min=0;*max=depth?240u:control==13u?9u:4u;
+    if(depth==2u && row==1u) {*min=20;*max=20001;}
+    if(depth==2u && row==2u) {*min=200;*max=10000;}
+    if(depth==2u && row==3u) {*min=1;*max=6;}
+}
+void omni_eq_menu_begin(unsigned id,omni_settings_menu_io callbacks)
+{
+    control=id;io=callbacks;opened=id>=12u && id<=14u;
+    depth=row=band=0;editing=feedback=dirty=false;message=0;
+}
+void omni_eq_menu_close(void) {opened=false;editing=false;}
+bool omni_eq_menu_open(void) {return opened;}
+void omni_eq_menu_event(omni_control_kind_t kind)
+{
+    if(kind==OMNI_CONTROL_BACK) {
+        if(editing) editing=false;
+        else if(depth==2u) {depth=1;row=band;}
+        else if(depth==1u) {depth=0;row=1;}
+        else opened=false;
+        feedback=false;message=0;return;
+    }
+    if(kind!=OMNI_CONTROL_SELECT) return;
+    message=0;
+    if(editing) {
+        if(io.write(selected_id(),value)) {editing=false;feedback=depth==0u;dirty=depth!=0u;}
+        else message="UNAVAILABLE";
+        return;
+    }
+    if(depth==0u && row) {
+        if(io.write(base()+(row==1u?OMNI_EQ_BEGIN:OMNI_EQ_FLAT),0)) {
+            depth=1;row=0;feedback=false;dirty=true;
+        } else message="USE NEW FLAT";
+        return;
+    }
+    if(depth==1u) {
+        if(row==10u) {
+            if(io.write(base()+OMNI_EQ_APPLY,0)) {feedback=true;dirty=false;}
+            else message="UNAVAILABLE";
+            return;
+        }
+        band=row;
+        if(control==12u) {depth=2;row=0;feedback=false;return;}
+    }
+    if(!io.read(selected_id(),&value)) {message="NOT LOADED";return;}
+    unsigned min,max;limits(&min,&max);
+    if(value<min || value>max) {message="INVALID VALUE";return;}
+    editing=true;feedback=false;
+}
+void omni_eq_menu_dial(int step)
+{
+    if(!step) return;
+    message=0;
+    if(!editing) {row=(row+(step<0?1u:count()-1u))%count();return;}
+    unsigned min,max;limits(&min,&max);
+    int64_t amount=-(int64_t)step;
+    if(depth) {
+        if(depth==1u || row==0u) amount*=5; /* Half-dB detents. */
+        else if(row==1u) amount*=value<100u?1:value<1000u?10:100;
+        else if(row==2u) amount*=50;
+    }
+    int64_t next=(int64_t)value+amount;
+    value=next<(int64_t)min?min:next>(int64_t)max?max:(unsigned)next;
+}
+static void number(char *out,unsigned n)
+{
+    char digits[10];unsigned count=0;
+    do {digits[count++]=(char)('0'+n%10u);n/=10u;} while(n);
+    for(unsigned i=0;i<count;++i) out[i]=digits[count-1u-i];
+    out[count]=0;
+}
+static void gain(char out[12],unsigned n)
+{
+    int signed_gain=(int)n-120;
+    unsigned magnitude=(unsigned)(signed_gain<0?-signed_gain:signed_gain);
+    out[0]=signed_gain<0?'-':'+';number(out+1,magnitude/10u);
+    size_t at=strlen(out);out[at++]='.';out[at++]=(char)('0'+magnitude%10u);
+    memcpy(out+at,"dB",3);
+}
+static void parameter(char out[12],unsigned kind,unsigned n)
+{
+    static const char *const filters[]={"PEAK","LO PASS","HI PASS","LO SHLF","HI SHLF","TYPE 6"};
+    if(kind==0u) gain(out,n);
+    else if(kind==1u) {
+        if(n==20001u) strcpy(out,"OFF");
+        else {number(out,n);strcat(out,"Hz");}
+    } else if(kind==2u) {
+        number(out,n/1000u);size_t at=strlen(out);out[at++]='.';
+        out[at++]=(char)('0'+n/100u%10u);out[at++]=(char)('0'+n/10u%10u);
+        out[at++]=(char)('0'+n%10u);out[at]=0;
+    } else strcpy(out,n>=1u && n<=6u?filters[n-1u]:"--");
+}
+static void preset(char out[12],unsigned n)
+{
+    static const char *const eq[]={"FLAT","BASS","FOCUS","SMILEY","CUSTOM"};
+    static const char *const mic[]={"FLAT","BALANCE","BCAST-H","BCAST-L","CLAR-L","CLAR-H","DEEP","NASAL","WALKIE","CUSTOM"};
+    strcpy(out,control==13u?(n<10u?mic[n]:"--"):(n<5u?eq[n]:"--"));
+}
+void omni_eq_menu_render(uint8_t frame[1024])
+{
+    omni_settings_view v={0};char labels[4][12],title[24];
+    static const char *const roots[]={"PRESET","EDIT CURVE","NEW FLAT"};
+    static const char *const params[]={"GAIN","FREQUENCY","Q","FILTER"};
+    strcpy(title,control==12u?"WIRELESS EQ":control==13u?"MIC EQ":"BLUETOOTH EQ");
+    if(depth==2u) {strcpy(title,"WIRELESS B");number(title+10,band+1u);}
+    v.title=title;v.count=count();v.selected=row;v.editing=editing;
+    unsigned first=row/4u*4u;
+    for(unsigned slot=0;slot<4u && first+slot<v.count;++slot) {
+        unsigned index=first+slot,n=0,id=control;bool known=false;
+        if(!depth) {
+            v.labels[slot]=roots[index];
+            if(!index) {known=io.read(control,&n);if(editing){n=value;known=true;}if(known)preset(v.values[slot],n);}
+        } else if(depth==1u) {
+            if(index==10u) {v.labels[slot]="APPLY CURVE";continue;}
+            strcpy(labels[slot],"BAND ");number(labels[slot]+5,index+1u);v.labels[slot]=labels[slot];
+            id=base()+index;known=io.read(id,&n);
+            if(editing && index==row) {n=value;known=true;}
+            if(known) gain(v.values[slot],n);
+        } else {
+            v.labels[slot]=params[index];id=base()+band+index*10u;known=io.read(id,&n);
+            if(editing && index==row) {n=value;known=true;}
+            if(known) parameter(v.values[slot],index,n);
+        }
+        if(!known && (depth || !index)) strcpy(v.values[slot],"--");
+    }
+    v.status=message?message:feedback && io.status?io.status():depth && dirty?"DRAFT":0;
+    omni_settings_ui_render(frame,&v);
+}

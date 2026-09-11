@@ -15,6 +15,7 @@ are retained. The stock loader owns the acknowledgement metadata page at `0x7F80
 | USB2/USB3 mixer faders | Not implemented |
 | Microphone capture | USB1 mono PCM16 at 48 kHz; mic-only, reopen and 96k playback coexistence tested |
 | Headset settings | Limiter, ANC, transparency, microphone controls and EQ commands |
+| Custom EQ menus | Ten bands per channel; wireless frequency/gain/Q/filter, microphone and Bluetooth gain |
 | Bluetooth | Settings available; connection status depends on passive reports |
 | OLED | Meters, volume, source bias, battery status and configurable timeout |
 | Spare battery | Charging works; charge/full status, no live percentage estimate |
@@ -45,3 +46,21 @@ live voltage to a misleading percentage.
 
 Build success proves compilation and offline checks. Listening tests, reconnects,
 physical recovery and endurance still need validation on each hardware candidate.
+
+## Custom EQ
+
+Open Wireless EQ, Mic EQ or BT EQ in Settings. Preset selects a built-in or
+the last custom curve applied during this boot. Edit Curve opens a draft;
+click a band to edit it, then select Apply Curve after band 10. Back cancels
+the current field edit and leaves the remaining draft available. New Flat
+replaces only the draft until Apply Curve is selected.
+
+Wireless bands expose frequency, gain, Q and filter type. Microphone and
+Bluetooth expose ten band gains. Clockwise increases a selected value.
+Gain detents are 0.5 dB within -12 to +12 dB.
+
+Drafts and the last accepted custom curves are held in MCU1 RAM. Switching
+presets preserves these copies; restarting MCU1 does not. If a startup
+snapshot reports Custom without its coefficients, Edit Curve does not invent
+them: use New Flat to explicitly create a replacement. No custom-coefficient
+readback from the headset or nonvolatile save is implemented.

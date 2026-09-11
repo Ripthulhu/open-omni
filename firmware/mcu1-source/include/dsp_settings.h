@@ -116,4 +116,7 @@ bool omni_dsp_settings_status(unsigned page, uint32_t out[15]);
  * Unknown fields are absent. DB reports are passive observations, not proof
  * of a reply to our last SET. Values remain snapshots until invalidated. */
 bool omni_dsp_settings_value(unsigned control, unsigned page, uint8_t out[60]);
+/* Last accepted complete custom curve in this boot, retained across preset
+ * selection. This is a local copy, not nonvolatile storage or a remote GET. */
+size_t omni_dsp_settings_custom(unsigned control,uint8_t out[128]);
 #endif

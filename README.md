@@ -14,6 +14,7 @@ stay stock.
 - Wireless headset playback, USB2/USB3 source selection and USB1/secondary-source bias.
 - USB1 and line-in faders for analogue line-out, with independent or master-linked volume.
 - Headset, microphone, Bluetooth and display settings through the device menus.
+- Ten-band custom EQ menus: parametric wireless EQ and graphic microphone/Bluetooth EQ.
 - OLED meters, headset battery status and spare-battery charging status.
 
 Independent USB2/USB3 mixer faders and saving custom settings across power cycles

@@ -31,6 +31,7 @@ static uint8_t glyph(char ch,unsigned col)
     if(ch>='A' && ch<='Z') return letters[(unsigned)(ch-'A')][col];
     if(ch>='0' && ch<='9') return digits[(unsigned)(ch-'0')][col];
     switch(ch) {
+    case 'z': {static const uint8_t g[]={68,100,84,76,68};return g[col];}
     case 'd': {static const uint8_t g[]={56,68,68,72,127};return g[col];}
     case '-':return 8;
     case ':':return col==2u?36u:0u;
@@ -251,7 +252,10 @@ void omni_settings_ui_render(uint8_t f[1024],const omni_settings_view *v)
     if(!f) return;
     memset(f,0,1024);if(!v) return;
     text(f,0,0,v->title,15,1,true);
-    number(f,104,0,v->selected+1u,true);text(f,110,0,"/",1,1,true);number(f,116,0,v->count,true);
+    char position[9],total[4];
+    unsigned length=decimal(position,v->selected+1u);position[length++]='/';position[length]=0;
+    (void)decimal(total,v->count);strcat(position,total);
+    text(f,128u-(unsigned)strlen(position)*6u,0,position,8,1,true);
     box(f,0,9,128,1,true);
     for(unsigned i=0;i<4u;++i) {
         if(!v->labels[i]) continue;

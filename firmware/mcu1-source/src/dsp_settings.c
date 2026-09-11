@@ -6,6 +6,7 @@
 
 typedef struct { uint8_t bytes[128],length,flags; uint32_t ms; } cached_value;
 static cached_value cache[DSP_SETTING_COUNT];
+static cached_value custom_eq[3];
 static struct {
     omni_link_parser parser;
     uint8_t frame[132],value[128],length,value_length,offset,peer_status;
@@ -149,6 +150,9 @@ static void remember(unsigned control,const uint8_t *value,size_t length,uint8_t
     cached_value *c=&cache[control];
     if(c->length==length && !memcmp(c->bytes,value,length)) flags=(uint8_t)(flags|c->flags);
     memcpy(c->bytes,value,length);c->length=(uint8_t)length;c->flags=flags;c->ms=now;
+    if(eq_control(control) && length==(control==DSP_SETTING_EQ_WIRELESS?128u:78u) &&
+       value[0]==(control==DSP_SETTING_EQ_MIC?8u:4u) && (flags&1u))
+        custom_eq[control-DSP_SETTING_EQ_WIRELESS]=*c;
     if(control>=DSP_SETTING_BT_STARTUP && control<=DSP_SETTING_BT_CALL && length==3u)
         for(unsigned id=DSP_SETTING_BT_STARTUP;id<=DSP_SETTING_BT_CALL;++id)
             if(id!=control) cache[id]=*c;
@@ -372,4 +376,12 @@ bool omni_dsp_settings_value(unsigned control,unsigned page,uint8_t out[60])
         memcpy(out+24,c->bytes+offset,n);
     }
     return true;
+}
+
+size_t omni_dsp_settings_custom(unsigned control,uint8_t out[128])
+{
+    if(!eq_control(control) || !out) return 0;
+    const cached_value *c=&custom_eq[control-DSP_SETTING_EQ_WIRELESS];
+    if(!(c->flags&1u)) return 0;
+    memcpy(out,c->bytes,c->length);return c->length;
 }

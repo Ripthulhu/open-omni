@@ -1,4 +1,5 @@
 #include "settings_menu.h"
+#include "eq_menu.h"
 #include "dsp_settings.h"
 #include "headset_query.h"
 #include "ui.h"
@@ -8,6 +9,67 @@ static uint32_t token=0x80000000u,submitted;
 static unsigned last_kind;
 static uint32_t read_token=0xc0000000u,read_ms;
 static bool read_attempted;
+static uint8_t drafts[3][128];
+static bool have_draft[3];
+static bool submit(unsigned id,const uint8_t *p,size_t n)
+{
+    if(omni_dsp_settings_busy()) return false;
+    uint32_t next=(token+1u)|0x80000000u;
+    if(!omni_dsp_settings_request(next,id,p,n,omni_ui_milliseconds())) return false;
+    token=submitted=next;last_kind=3;return true;
+}
+static bool draft_begin(unsigned channel,bool flat)
+{
+    if(channel>=3u) return false;
+    if(!flat && have_draft[channel]) return true;
+    unsigned control=12u+channel,custom=channel==1u?8u:4u;
+    uint8_t p[128];size_t n=0;
+    if(!flat) n=omni_dsp_settings_custom(control,p);
+    if(!n && !flat) {
+        uint8_t raw[60];uint32_t flags,length;
+        if(!omni_dsp_settings_value(control,0,raw)) return false;
+        memcpy(&length,raw+12,4);memcpy(&flags,raw+16,4);
+        if(!(flags&1u) || !length || raw[24]==custom) return false;
+        n=omni_dsp_settings_eq_preset(control,raw[24],p);
+    }
+    if(flat) n=omni_dsp_settings_eq_preset(control,custom,p);
+    if(!n) return false;
+    p[0]=(uint8_t)custom;memset(p+1,0,67);
+    memcpy(p+1,"Custom",6);memcpy(p+7,"Custom",6);
+    memcpy(drafts[channel],p,n);have_draft[channel]=true;return true;
+}
+static bool draft_read(unsigned id,unsigned *value)
+{
+    unsigned channel=(id-OMNI_EQ_FIELD_BASE)/OMNI_EQ_FIELD_STRIDE;
+    unsigned field=(id-OMNI_EQ_FIELD_BASE)%OMNI_EQ_FIELD_STRIDE;
+    if(channel>=3u || field>=40u || !have_draft[channel]) return false;
+    unsigned band=field%10u,kind=field/10u;
+    const uint8_t *p=drafts[channel]+68u+(channel?band:6u*band);
+    if(kind==0u) {uint8_t gain=p[channel?0u:3u];*value=(unsigned)((gain<128u?(int)gain:(int)gain-256)+120);}
+    else if(channel) return false;
+    else if(kind==1u) *value=(unsigned)p[0]|((unsigned)p[1]<<8);
+    else if(kind==2u) *value=(unsigned)p[4]|((unsigned)p[5]<<8);
+    else *value=p[2];
+    return true;
+}
+static bool draft_write(unsigned id,unsigned value)
+{
+    unsigned channel=(id-OMNI_EQ_FIELD_BASE)/OMNI_EQ_FIELD_STRIDE;
+    unsigned field=(id-OMNI_EQ_FIELD_BASE)%OMNI_EQ_FIELD_STRIDE;
+    if(channel>=3u) return false;
+    if(field==OMNI_EQ_BEGIN || field==OMNI_EQ_FLAT) return draft_begin(channel,field==OMNI_EQ_FLAT);
+    if(!have_draft[channel]) return false;
+    if(field==OMNI_EQ_APPLY) return submit(12u+channel,drafts[channel],channel?78u:128u);
+    if(field>=40u) return false;
+    unsigned kind=field/10u,band=field%10u;
+    uint8_t *p=drafts[channel]+68u+(channel?band:6u*band);
+    if(kind==0u) {if(value>240u)return false;p[channel?0u:3u]=(uint8_t)((int)value-120);}
+    else if(channel) return false;
+    else if(kind==1u) {if(value<20u || value>20001u)return false;p[0]=(uint8_t)value;p[1]=(uint8_t)(value>>8);}
+    else if(kind==2u) {if(value<200u || value>10000u)return false;p[4]=(uint8_t)value;p[5]=(uint8_t)(value>>8);}
+    else {if(value<1u || value>6u)return false;p[2]=(uint8_t)value;}
+    return true;
+}
 static const uint8_t minutes[]={0,1,5,10,15,30,60};
 static bool cached(unsigned id,uint8_t value[36],unsigned *length)
 {
@@ -19,6 +81,7 @@ static bool cached(unsigned id,uint8_t value[36],unsigned *length)
 }
 static bool read_value(unsigned id,unsigned *value)
 {
+    if(id>=OMNI_EQ_FIELD_BASE) return draft_read(id,value);
     uint32_t words[15];
     if(id>=32u && id<=35u) {
         omni_ui_settings_status(words);
@@ -54,6 +117,7 @@ static bool read_value(unsigned id,unsigned *value)
 }
 static bool write_value(unsigned id,unsigned value)
 {
+    if(id>=OMNI_EQ_FIELD_BASE) return draft_write(id,value);
     uint32_t words[15];
     if(id>=32u && id<=35u) {
         omni_ui_settings_status(words);
@@ -77,11 +141,13 @@ static bool write_value(unsigned id,unsigned value)
     } else if(id==11u) {
         if(value>=sizeof(minutes))return false;
         p[0]=minutes[value];
-    } else if(id>=12u && id<=14u) n=omni_dsp_settings_eq_preset(id,id==13u && value==8u?9u:value,p);
+    } else if(id>=12u && id<=14u) {
+        unsigned preset=id==13u && value==8u?9u:id==13u && value==9u?8u:value;
+        if(preset==(id==13u?8u:4u)) n=omni_dsp_settings_custom(id,p);
+        else n=omni_dsp_settings_eq_preset(id,preset,p);
+    }
     if(!n) return false;
-    uint32_t next=(token+1u)|0x80000000u;
-    if(!omni_dsp_settings_request(next,id,p,n,omni_ui_milliseconds())) return false;
-    token=submitted=next;last_kind=3;return true;
+    return submit(id,p,n);
 }
 static const char *status(void)
 {
