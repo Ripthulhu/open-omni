@@ -12,6 +12,7 @@
 #include "ui_idle.h"
 #include "mixer_ui.h"
 #include "settings_menu.h"
+#include "eq_nvm.h"
 #include "native_gain_adapter.h"
 #include "home_ui.h"
 #include "dsp_settings.h"
@@ -224,6 +225,7 @@ void omni_ui_poll(void)
         phase=read_phase(); (void)omni_rotary_init(&rotary,phase,2);
         (void)omni_display_init(&display,io,now); initialized=1; sampled=now;
         omni_ui_idle_init(&idle,now); blanked=0;
+        omni_eq_persist_restore();
     }
     uint32_t desired_settings=settings;
     if(settings_applied!=desired_settings) {
@@ -289,6 +291,7 @@ void omni_ui_poll(void)
         }
     }
     omni_settings_menu_live_poll(now);
+    omni_eq_persist_poll(now);
     int16_t db; uint8_t mute; audio_probe_volume_snapshot(&db,&mute);
     unsigned charging=omni_charger_indicator(now);
     uint32_t headset_battery=omni_headset_battery_display(now);

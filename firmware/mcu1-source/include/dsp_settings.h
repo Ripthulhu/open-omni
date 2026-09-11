@@ -119,4 +119,8 @@ bool omni_dsp_settings_value(unsigned control, unsigned page, uint8_t out[60]);
 /* Last accepted complete custom curve in this boot, retained across preset
  * selection. This is a local copy, not nonvolatile storage or a remote GET. */
 size_t omni_dsp_settings_custom(unsigned control,uint8_t out[128]);
+#define DSP_EQ_NVM_PAYLOAD 287u
+uint32_t omni_dsp_settings_eq_generation(void);
+size_t omni_dsp_settings_eq_serialize(uint8_t out[DSP_EQ_NVM_PAYLOAD]);
+void omni_dsp_settings_eq_deserialize(const uint8_t *in,size_t length,uint32_t now);
 #endif

@@ -48,6 +48,7 @@ if(CMAKE_CROSSCOMPILING)
     src/charger.c src/charger_adc.c src/charger_policy.c
     src/audio_probe.c src/audio_descriptors.c src/volume.c src/volume_scale.c src/uac2_control.c
     src/boot_ack.c src/boot_ack_lpc5528.c
+    src/eq_nvm.c src/eq_persist.c src/eq_nvm_lpc5528.c
     ${V}/core/drivers/iap1/fsl_iap.c
     ${D}/fsl_clock.c ${D}/fsl_reset.c ${D}/fsl_power.c
     ${V}/core/drivers/common/fsl_common.c

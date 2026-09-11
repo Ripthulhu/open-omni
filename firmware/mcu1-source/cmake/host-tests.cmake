@@ -204,6 +204,10 @@ add_executable(test_eq_graph tests/test_eq_graph.c src/eq_response.c src/native_
 target_include_directories(test_eq_graph PRIVATE include)
 omni_test_warnings(test_eq_graph -Wconversion)
 add_test(NAME eq_graph COMMAND test_eq_graph)
+add_executable(test_eq_nvm tests/test_eq_nvm.c src/eq_nvm.c src/dsp_settings.c src/interchip.c)
+target_include_directories(test_eq_nvm PRIVATE include)
+omni_test_warnings(test_eq_nvm -Wconversion)
+add_test(NAME eq_nvm COMMAND test_eq_nvm)
 
 add_executable(test_eq_response tests/test_eq_response.c src/eq_response.c)
 target_include_directories(test_eq_response PRIVATE include)

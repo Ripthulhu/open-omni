@@ -7,6 +7,7 @@
 typedef struct { uint8_t bytes[128],length,flags; uint32_t ms; } cached_value;
 static cached_value cache[DSP_SETTING_COUNT];
 static cached_value custom_eq[3];
+static uint32_t eq_persist_gen;
 static struct {
     omni_link_parser parser;
     uint8_t frame[132],value[128],length,value_length,offset,peer_status;
@@ -153,6 +154,7 @@ static void remember(unsigned control,const uint8_t *value,size_t length,uint8_t
     if(eq_control(control) && length==(control==DSP_SETTING_EQ_WIRELESS?128u:78u) &&
        value[0]==(control==DSP_SETTING_EQ_MIC?8u:4u) && (flags&1u))
         custom_eq[control-DSP_SETTING_EQ_WIRELESS]=*c;
+    if(eq_control(control) && length==(control==DSP_SETTING_EQ_WIRELESS?128u:78u)) ++eq_persist_gen;
     if(control>=DSP_SETTING_BT_STARTUP && control<=DSP_SETTING_BT_CALL && length==3u)
         for(unsigned id=DSP_SETTING_BT_STARTUP;id<=DSP_SETTING_BT_CALL;++id)
             if(id!=control) cache[id]=*c;
@@ -384,4 +386,31 @@ size_t omni_dsp_settings_custom(unsigned control,uint8_t out[128])
     const cached_value *c=&custom_eq[control-DSP_SETTING_EQ_WIRELESS];
     if(!(c->flags&1u)) return 0;
     memcpy(out,c->bytes,c->length);return c->length;
+}
+uint32_t omni_dsp_settings_eq_generation(void) { return eq_persist_gen; }
+size_t omni_dsp_settings_eq_serialize(uint8_t out[DSP_EQ_NVM_PAYLOAD])
+{
+    if(!out) return 0;
+    memset(out,0,DSP_EQ_NVM_PAYLOAD);
+    unsigned off=0;
+    for(unsigned ch=0;ch<3u;++ch) {
+        unsigned control=DSP_SETTING_EQ_WIRELESS+ch;
+        unsigned blen=control==DSP_SETTING_EQ_WIRELESS?128u:78u;
+        const cached_value *c=&cache[control];
+        if(c->length==blen && (c->flags&1u)) {out[off]=1u;memcpy(out+off+1u,c->bytes,blen);}
+        off+=1u+blen;
+    }
+    return DSP_EQ_NVM_PAYLOAD;
+}
+void omni_dsp_settings_eq_deserialize(const uint8_t *in,size_t length,uint32_t now)
+{
+    if(!in || length!=DSP_EQ_NVM_PAYLOAD) return;
+    ensure_init();
+    unsigned off=0;
+    for(unsigned ch=0;ch<3u;++ch) {
+        unsigned control=DSP_SETTING_EQ_WIRELESS+ch;
+        unsigned blen=control==DSP_SETTING_EQ_WIRELESS?128u:78u;
+        if(in[off]==1u) remember(control,in+off+1u,blen,3u,now);
+        off+=1u+blen;
+    }
 }
