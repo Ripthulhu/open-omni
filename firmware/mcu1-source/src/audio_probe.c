@@ -13,6 +13,7 @@
 #include "volume_scale.h"
 #include "native_gain.h"
 #include "ui.h"
+#include "microphone.h"
 #include <string.h>
 
 /* Source-owned UAC2 adapter on the pinned NXP DCI. SDK's stock adapter stores
@@ -33,7 +34,7 @@ static uint8_t endpoint_open, endpoint_closing;
 #define PLAYBACK_ENDPOINTS 0x09u
 #define MICROPHONE_ENDPOINT 0x04u
 #define NOTIFICATION_ENDPOINT 0x02u
-static uint8_t microphone[96] __attribute__((aligned(4)));
+static uint8_t microphone[98] __attribute__((aligned(4)));
 static uint8_t control[32] __attribute__((aligned(4)));
 static uint8_t notification[8] __attribute__((aligned(4)));
 static uint32_t sent_revision, playback_packets, microphone_packets, errors, notifications;
@@ -94,7 +95,7 @@ static usb_status_t queue_stream(uint8_t endpoint)
     if(endpoint!=0x83u) return kStatus_USB_InvalidRequest;
     endpoint_audit *audit=&endpoint_audits[2];
     ++audit->submits;
-    usb_status_t result=USB_DeviceSendRequest(audio_device,0x83,microphone,sizeof(microphone));
+    usb_status_t result=USB_DeviceSendRequest(audio_device,0x83,microphone,omni_microphone_packet(microphone));
     audit->last_queue=(uint32_t)result;
     return result;
 }
@@ -134,7 +135,7 @@ static usb_status_t endpoint_callback(usb_device_handle handle,
     } else if (configured && alternate[OMNI_MICROPHONE_AS_INTERFACE]) {
         if (!message || message->length==UINT32_MAX) return kStatus_USB_Success;
         ++microphone_packets;
-        if (message->length!=96) record_error(3,endpoint,message->length,kStatus_USB_Error);
+        if (message->length<94u || message->length>98u || (message->length&1u)) record_error(3,endpoint,message->length,kStatus_USB_Error);
         usb_status_t result=queue_stream(endpoint);
         if (result!=kStatus_USB_Success) record_error(4,endpoint,message->length,result);
     }

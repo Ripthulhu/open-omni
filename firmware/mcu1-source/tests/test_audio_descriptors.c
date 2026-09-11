@@ -42,13 +42,13 @@ int main(void)
                 assert(alt==1 || alt==2);
                 if(d[2]==3) assert(d[3]==5 && size==(alt==1?388u:582u) && d[6]==1);
                 else assert(d[2]==0x84 && d[3]==0x11 && size==4 && d[6]==1);
-            } else if(iface==3) assert(alt==1 && d[2]==0x83 && d[3]==0x0d && size==98 && d[6]==1);
+            } else if(iface==3) assert(alt==1 && d[2]==0x83 && d[3]==0x05 && size==98 && d[6]==1);
             else {assert(iface==4 && d[2]==0x81 && d[3]==3 && size==64 && d[6]==10);}
         } else if(d[1]==0x24 && (iface==0 || iface==2)) {
             unsigned mic=iface==2;ac_bytes[mic]+=n;
             if(d[2]==1) assert(n==9 && d[3]==0 && d[4]==2 && d[6]==(mic?46:64) && !d[7]);
             else if(d[2]==10) {
-                assert(n==8 && d[3]==(mic?11:10) && d[4]==(mic?5:3) && d[5]==(mic?5:7));++clocks;
+                assert(n==8 && d[3]==(mic?11:10) && d[4]==(mic?1:3) && d[5]==(mic?5:7));++clocks;
             } else if(d[2]==2) {
                 assert(n==17 && d[3]==(mic?3:1) && d[7]==(mic?11:10) && d[8]==(mic?1:2));
                 assert(d[16]==(mic?OMNI_USB_STRING_MICROPHONE:OMNI_USB_STRING_PLAYBACK));

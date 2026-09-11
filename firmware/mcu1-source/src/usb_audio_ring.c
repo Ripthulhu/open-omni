@@ -1,4 +1,5 @@
 #include "board_clock.h"
+#include "microphone.h"
 #include "usb_audio_ring.h"
 #include "audio_queue.h"
 #include "source_mix.h"
@@ -22,6 +23,8 @@ static omni_audio_format stream_format={.sample_rate=48000u,.epoch=0u,
 static volatile uint32_t stale_packets;
 static volatile uint32_t active,prepared,dma_fault,completed,frames_in,ignored;
 static volatile uint32_t gain_ready;
+static volatile uint32_t capture_only;
+void usb_audio_ring_capture_only(int enabled) { capture_only=enabled?1u:0u; }
 static volatile uint32_t source_gain=OMNI_SOURCE_MIX_UNITY;
 static omni_source_mix_ramp source_ramp;
 void usb_audio_ring_source_gain(unsigned q14)
@@ -111,6 +114,7 @@ void usb_audio_ring_activate(void)
 void usb_audio_ring_stop(void)
 {
     active=0; gain_ready=0;
+    if(!omni_microphone_stop()) dma_fault|=8u;
     if(prepared) {
         NVIC_DisableIRQ(DMA0_IRQn); REG(0x40082050u)=DMA_BIT;
         REG(0x40082028u)=DMA_BIT;
@@ -169,8 +173,10 @@ static void dma_failure(uint32_t why,uint32_t flags)
 void DMA0_IRQHandler(void)
 {
     uint32_t start=SysTick->VAL;
+    omni_microphone_irq();
     uint32_t a=REG(0x40082058u)&DMA_BIT,b=REG(0x40082060u)&DMA_BIT;
     uint32_t err=REG(0x40082040u)&DMA_BIT;
+    if(!a && !b && !err) return;
     if(!active) { REG(0x40082058u)=a; REG(0x40082060u)=b; return; }
     if(err || (a && b) || (!a && !b) || (expected_b ? !b : !a)) {
         dma_failure(1u,a|(b<<1)|(err<<2)); return;
@@ -191,8 +197,9 @@ void DMA0_IRQHandler(void)
     if(fill<fill_min) fill_min=fill;
     if(fill>fill_max) fill_max=fill;
     if(fill_count<1000u) { fill_sum+=fill; ++fill_count; }
-    uint32_t take=omni_audio_queue_render(&queue,
-        &omni_usb_audio[a?0u:words],frames);
+    uint32_t take=frames;
+    if(capture_only) memset(&omni_usb_audio[a?0u:words],0,words*sizeof(uint32_t));
+    else take=omni_audio_queue_render(&queue, &omni_usb_audio[a?0u:words],frames);
     /* Only the just-released block is writable. Snapshot one aligned target
      * for both channels; unity remains bit-exact. No change to clock/queue
      * ownership or the other, currently playing descriptor. */
@@ -223,7 +230,8 @@ void usb_audio_ring_clock_servo(void)
     uint32_t sum=fill_sum,count=fill_count; fill_sum=fill_count=0;
     last_servo=now;
     if(count) mean_fill_q8=(sum*256u)/count;
-    uint32_t md=omni_audio_rate_update_format(&rate,mean_fill_q8,stream_format.sample_rate,dt,count!=0u);
+    uint32_t md=capture_only?OMNI_AUDIO_RATE_MD_NOMINAL:
+        omni_audio_rate_update_format(&rate,mean_fill_q8,stream_format.sample_rate,dt,count!=0u);
     REG(0x40000590u)=md;
     __set_PRIMASK(mask);
     if(!count) dma_failure(32u,dt); /* active clock/DMA made no progress in 32ms */

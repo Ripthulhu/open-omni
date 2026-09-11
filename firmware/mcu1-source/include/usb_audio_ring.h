@@ -2,6 +2,7 @@
 #define OMNI_USB_AUDIO_RING_H
 #include <stdbool.h>
 #include <stdint.h>
+void usb_audio_ring_capture_only(int enabled);
 #include "audio_format.h"
 /* USB->2048 stereo-frame SPSC queue->DMA-owned A/B blocks of 1ms each.
  * No modulo hardware pointer, sample rate conversion or hard drift drop/dup.

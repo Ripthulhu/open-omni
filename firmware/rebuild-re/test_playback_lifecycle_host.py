@@ -31,6 +31,15 @@ static unsigned configuration=1,recovery_state,boot_ack_status,alternate=1;
 static unsigned resets,clocks,starts,teardowns,stops,dma_stops,acks,last_rate;
 static unsigned desired_rate=48000,desired_bits=16,desired_epoch=1;
 static bool quiesced,rx_ok=true;
+static unsigned mic_alternate,capture_only,mic_starts;
+static bool microphone_started;
+static uint32_t omni_dma_desc[64];
+#define OMNI_MICROPHONE_AS_INTERFACE 3
+static int audio_probe_alternate(unsigned i){assert(i==3);return (int)mic_alternate;}
+static void usb_audio_ring_capture_only(int on){capture_only=(unsigned)on;}
+static bool omni_microphone_start(uint32_t *p,uint32_t rate){assert(p==omni_dma_desc+16);(void)rate;++mic_starts;return true;}
+static bool omni_microphone_stop(void){return true;}
+
 static omni_audio_mode_io_t stop_result=OMNI_AUDIO_MODE_IO_PENDING;
 static uint32_t omni_ui_milliseconds(void){return 100;}
 static bool audio_probe_playback_format(omni_audio_format *out)
@@ -70,6 +79,13 @@ static void usb_audio_ring_clock_servo(void){}
 TEST = r'''
 int main(void)
 {
+    boot_ack_status=OMNI_ACK_WRITTEN;quiesced=true;alternate=0;mic_alternate=1;
+    playback_service();assert(pb_state==1 && capture_only);
+    pb_mode.state=OMNI_AUDIO_MODE_LOCAL_COMPLETE;
+    playback_service();assert(pb_state==2 && mic_starts==1);
+    mic_alternate=0;playback_service();assert(!pb_state);
+    resets=clocks=starts=teardowns=stops=dma_stops=acks=0;
+    microphone_started=false;alternate=1;
     /* The USB host can select its streaming alternate before startup metadata
      * programming. No clock/UART/DMA work may precede the successful ACK. */
     boot_ack_status=OMNI_ACK_WAITING;quiesced=true;

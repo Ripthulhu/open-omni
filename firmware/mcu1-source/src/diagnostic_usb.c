@@ -7,6 +7,7 @@
 #include "fsl_device_registers.h"
 #include "boot_ack.h"
 #include "audio_probe.h"
+#include "microphone.h"
 #include "ui.h"
 #include "charger.h"
 #include "charger_adc.h"
@@ -269,6 +270,7 @@ static uint8_t am_src_usb;   /* 0 = stream the built-in test tone; 1 = stream th
 static omni_audio_mode_t pb_mode;
 static omni_audio_format pb_format;
 static omni_link_parser am_rx_parser;
+static bool microphone_started;
 static uint8_t pb_state;      /* 0 IDLE, 1 HANDSHAKE, 2 RUNNING, 3 FAULT, 4 UART QUIESCING */
 static bool pb_stop_fault;
 static uint32_t pb_fails;
@@ -381,6 +383,7 @@ static omni_audio_mode_io_t am_txring_poll(void *ctx) { (void)ctx; return OMNI_A
 static void am_txring_teardown(void)
 {
     usb_audio_ring_stop(); /* stop producer+IRQ, disable DMA and wait BUSY before reuse */
+    microphone_started=false;
     *(volatile uint32_t *)(uintptr_t)0x40088c00u = 0x1f0000u;    /* I2S2 off */
     *(volatile uint32_t *)(uintptr_t)0x40086c00u = 0xf0430u;     /* I2S0 off */
     *(volatile uint32_t *)(uintptr_t)0x40082028u = 0x800u;       /* ENABLECLR ch11 */
@@ -1663,6 +1666,9 @@ static void command(void)
         }
         break;
     }
+    case 75: {
+        uint32_t values[15];omni_microphone_status(values);memcpy(response+4,values,60);break;
+    }
     case 73: /* Desired source-bias tuple, applied by main; read coherent evidence. */
         if(request[4]>1u || (request[4] && (configuration!=1u || recovery_state ||
            !omni_mixer_control_request(request[5],request[6])))) {response[3]=2;break;}
@@ -1996,7 +2002,9 @@ static void playback_service(void)
 {
     omni_audio_format desired;
     bool stream=audio_probe_playback_format(&desired);
-    int want = (configuration == 1 && !recovery_state && stream &&
+    bool capture=audio_probe_alternate(OMNI_MICROPHONE_AS_INTERFACE)>0;
+    usb_audio_ring_capture_only(!stream);
+    int want = (configuration == 1 && !recovery_state && (stream || capture) &&
         (boot_ack_status==OMNI_ACK_WRITTEN || boot_ack_status==OMNI_ACK_ALREADY_VALID));
     uint32_t now = omni_ui_milliseconds();
     if(pb_state==4u) {
@@ -2080,6 +2088,13 @@ static void playback_service(void)
         if(pb_state==1u) { am_txring_teardown();pb_stop_fault=true;pb_state=4u; }
         else { playback_teardown();pb_format=desired;pb_state=3u; }
         ++pb_fails; return;
+    }
+    if(pb_state==2u && capture && !microphone_started) {
+        microphone_started=true;
+        (void)omni_microphone_start(&omni_dma_desc[16],pb_format.sample_rate);
+    }
+    if(microphone_started && !capture) {
+        (void)omni_microphone_stop();microphone_started=false;
     }
     /* DMA is already active during the tail of the DSP handshake. */
     usb_audio_ring_clock_servo();

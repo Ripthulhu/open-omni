@@ -18,8 +18,7 @@ const char *omni_usb_string(uint8_t index,const char *build_id)
 /* Two independent UAC2 functions: playback AC0/AS1 has a programmable 48/96k
  * clock; microphone AC2/AS3 keeps its stock 48k clock. Windows binds one clock
  * per function. HID4 diagnostics is independent. Playback16/24 uses stereo
- * packed PCM with explicit feedback; microphone remains mono16 silence pending
- * the actual capture path. Keep topology constants in audio_usb_layout.h. */
+ * packed PCM with explicit feedback; microphone uses asynchronous mono16 RX. Keep topology constants in audio_usb_layout.h. */
 uint8_t omni_audio_config[OMNI_AUDIO_CONFIG_LENGTH] = {
     9,2,0x63,1,5,1,0,0x80,50,
     8,11,0,2,1,0,0x20,OMNI_USB_STRING_PLAYBACK,
@@ -46,14 +45,14 @@ uint8_t omni_audio_config[OMNI_AUDIO_CONFIG_LENGTH] = {
     8,11,2,2,1,0,0x20,OMNI_USB_STRING_MICROPHONE,
     9,4,2,0,0,1,1,0x20,OMNI_USB_STRING_MICROPHONE,
     9,0x24,1,0,2,1,46,0,0,
-    8,0x24,10,11,5,5,0,0, /* Separate fixed 48k, USB-frame-paced silent capture. */
+    8,0x24,10,11,1,5,0,0, /* Fixed 48k capture, asynchronous to USB SOF. */
     17,0x24,2,3,1,2,0,11,1,0,0,0,0,0,0,0,OMNI_USB_STRING_MICROPHONE,
     12,0x24,3,4,1,1,0,3,11,0,0,OMNI_USB_STRING_MICROPHONE,
     9,4,3,0,0,1,2,0x20,OMNI_USB_STRING_MICROPHONE,
     9,4,3,1,1,1,2,0x20,OMNI_USB_STRING_MICROPHONE,
     16,0x24,1,4,0,1,1,0,0,0,1,0,0,0,0,0,
     6,0x24,2,1,2,16,
-    7,5,0x83,0x0d,98,0,1,
+    7,5,0x83,0x05,98,0,1,
     8,0x25,1,0,0,0,0,0,
     9,4,4,0,1,3,0,0,OMNI_USB_STRING_CONTROL,
     9,0x21,0x11,1,0,1,0x22,27,0,
