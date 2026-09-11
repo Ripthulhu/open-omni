@@ -21,10 +21,14 @@
 #include <string.h>
 /* 30 Hz leaves room for the 20.5 ms framebuffer transfer at 400 kHz. */
 #define UI_FRAME_MS 33u
+#define OMNI_UI_EXTERNAL_MS 700u
 static volatile uint32_t milliseconds;
 static omni_display display;
 static omni_rotary rotary;
 static uint8_t frame[1024], initialized, phase;
+static uint8_t external_frame[1024];
+static volatile uint32_t external_ms;
+static volatile uint8_t external_pending, external_seen, external_active;
 static uint32_t sampled, rendered, steps_positive, steps_negative;
 static int16_t shown_db=1;
 static uint8_t shown_mute=255;
@@ -272,7 +276,8 @@ void omni_ui_poll(void)
     unsigned charging=omni_charger_indicator(now);
     uint32_t headset_battery=omni_headset_battery_display(now);
     /* Observe user state independently of display readiness/redraw retries. */
-    int awake=omni_ui_idle_update(&idle,now,db,mute,woke!=0);
+    int ext=external_seen && (uint32_t)(now-external_ms)<OMNI_UI_EXTERNAL_MS;
+    int awake=omni_ui_idle_update(&idle,now,db,mute,woke!=0 || ext);
     omni_display_poll(&display,now);
     unsigned brightness=(settings_applied>>8)&255u;
     bool dim=!awake && ((settings_applied>>16)&1u);
@@ -280,6 +285,11 @@ void omni_ui_poll(void)
     /* Contrast updates never steal the SPI owner in the middle of pixels. */
     if(display.state==OMNI_DISPLAY_READY && display.contrast!=brightness*23u)
         (void)omni_display_brightness(&display,brightness);
+    if(ext) {
+        if(display.state==OMNI_DISPLAY_READY && external_pending && omni_display_present(&display,external_frame)) external_pending=0u;
+        external_active=1u; return;
+    }
+    if(external_active) { external_active=0u; blanked=0; shown_db=1; shown_ms=now-UI_FRAME_MS; }
     if(display.state==OMNI_DISPLAY_READY) {
         if(!awake && !dim) {
             if(!blanked) {
@@ -293,6 +303,13 @@ void omni_ui_poll(void)
             }
         }
     }
+}
+bool omni_ui_external_chunk(unsigned offset,const uint8_t *data,unsigned count,uint32_t now)
+{
+    if(!data || count>57u || offset+count>1024u) return false;
+    memcpy(external_frame+offset,data,count);
+    if(offset+count==1024u) { external_ms=now; external_seen=1u; external_pending=1u; }
+    return true;
 }
 void omni_ui_status(uint8_t out[60])
 {

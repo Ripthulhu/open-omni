@@ -6,6 +6,7 @@
 /* Recovered MCU1 SPI4 path, no stock application function calls. All writes
  * are confined to clocks, SPI4 and the five recovered display pins. */
 static struct { const uint8_t *bytes; size_t length, sent; bool active; } tx;
+static volatile uint32_t g_desired_div=29u;
 static volatile uint32_t *reg(uint32_t address) { return (volatile uint32_t *)address; }
 static void pin(unsigned port,unsigned number,bool high)
 {
@@ -25,6 +26,7 @@ static int start(void *context,bool data,const uint8_t *bytes,size_t length)
     (void)context;
     if (tx.active || !bytes || !length || length>1024U ||
         !(SPI4->CFG & SPI_CFG_ENABLE_MASK) || !(SPI4->STAT & SPI_STAT_MSTIDLE_MASK)) return -1;
+    SPI4->DIV=g_desired_div; /* idle here (MSTIDLE checked above); safe to retune */
     pin(1,22,data);
     tx.bytes=bytes; tx.length=length; tx.sent=0; tx.active=true;
     return 0;
@@ -63,4 +65,10 @@ omni_display_io omni_display_lpc5528_init(void)
     *reg(0x400010ccU)=0x4105U; *reg(0x400010d4U)=0x4105U;
     SPI4->CFG|=SPI_CFG_ENABLE_MASK; tx.active=false;
     omni_display_io io={0,pins,start,busy,cancel}; return io;
+}
+void omni_display_lpc5528_set_div(uint32_t div)
+{
+    if(div<1u) div=1u;
+    if(div>255u) div=255u;
+    g_desired_div=div;
 }

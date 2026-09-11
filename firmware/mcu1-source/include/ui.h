@@ -14,4 +14,7 @@ bool omni_ui_settings_set(unsigned timeout_index,unsigned brightness,
 void omni_ui_settings_status(uint32_t out[15]);
 /* Main-loop-only complete frames; queued with local controls, never in an ISR. */
 bool omni_ui_remote_frame(const uint8_t *frame,size_t length);
+/* Host-streamed full OLED framebuffer, delivered in <=57-byte chunks. Takes over
+ * the panel while frames keep arriving, reverts to the UI when they stop. */
+bool omni_ui_external_chunk(unsigned offset,const uint8_t *data,unsigned count,uint32_t now);
 #endif

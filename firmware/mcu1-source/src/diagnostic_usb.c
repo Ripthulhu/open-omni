@@ -9,6 +9,7 @@
 #include "audio_probe.h"
 #include "microphone.h"
 #include "ui.h"
+#include "display_lpc5528.h"
 #include "charger.h"
 #include "charger_adc.h"
 #include "usb_guard.h"
@@ -1761,6 +1762,12 @@ static void command(void)
         for(unsigned i=0;i<15u;++i) put32(response+4u+4u*i,values[i]);
         break;
     }
+    case 76: /* Host OLED framebuffer chunk: offset LE16 [4..5], count [6], bytes [7..]. */
+        if(!omni_ui_external_chunk(request[4]|((unsigned)request[5]<<8),request+7,request[6],omni_ui_milliseconds())) response[3]=2;
+        break;
+    case 77: /* Tune display SPI divider (SCK=12MHz/(div+1)) for faster refresh. */
+        omni_display_lpc5528_set_div(request[4]|((unsigned)request[5]<<8));
+        break;
     case 74: {
         uint32_t values[15];
         if(request[4]==0u) audio_probe_format_status(values);
