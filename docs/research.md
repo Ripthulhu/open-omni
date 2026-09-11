@@ -12,6 +12,7 @@ code, captured protocol traffic and observed hardware behaviour.
 | MCU2 controls | [Control contracts](../firmware/rebuild-re/MCU2-CONTROLS-CONTRACTS-2026-09-10.md), [native runtime](../firmware/rebuild-re/NATIVE-MCU2-RUNTIME-2026-09-10.md) |
 | DSP settings | [Native settings](../firmware/rebuild-re/NATIVE-DSP-SETTINGS-2026-09-10.md), [native gain](../firmware/rebuild-re/NATIVE-DSP-GAIN-RESULTS-2026-09-10.md) |
 | USB audio | [CPU clock correction](../firmware/rebuild-re/AUDIO-CPU96-RESULTS-2026-09-10.md), [high-resolution playback](../firmware/rebuild-re/AUDIO-HIRES-LIVE-2026-09-11.md), [USB cursor](../firmware/rebuild-re/USB-OUT-CURSOR-2026-09-11.md) |
+| Microphone | [RX DMA and live capture](../firmware/rebuild-re/MICROPHONE-2026-09-11.md) |
 | Mixer | [Line input and source mixing](../firmware/rebuild-re/MIXER-2026-09-10.md) |
 | Charging | [Charger](../firmware/rebuild-re/BATTERY-CHARGER-IMPLEMENTATION-2026-09-10.md), [percentage error](../firmware/rebuild-re/BATTERY-PERCENTAGE-BUG-2026-09-11.md), [removal status](../firmware/rebuild-re/BATTERY-REMOVAL-UI-2026-09-11.md) |
 | Headset battery | [Telemetry and shared UART](../firmware/rebuild-re/HEADSET-BATTERY-IMPLEMENTATION-2026-09-10.md) |

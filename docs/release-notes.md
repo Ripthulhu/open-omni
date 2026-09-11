@@ -5,8 +5,11 @@ This prerelease includes USB1 playback at 16/24-bit, 48/96 kHz, wireless playbac
 native volume/mute, source selection and bias, line-out controls, expanded settings
 menus, OLED meters and battery charging status. MCU2, DSP and bootloader remain stock.
 
-Known gaps: USB1 microphone capture streams silence, independent USB2/USB3 mixer
-faders are missing, and local settings aren't saved across power cycles. Secondary
+USB1 microphone capture is mono 16-bit at 48 kHz. Mic-only operation, six reopen
+cycles, hardware mute/retraction and simultaneous 96 kHz playback were tested.
+
+Known gaps: independent USB2/USB3 mixer faders are missing, and local settings
+aren't saved across power cycles. Secondary
 USB audio and full lifecycle/endurance qualification remain incomplete.
 
 The firmware is built twice with identical application bytes. Host tests, UI

@@ -9,14 +9,15 @@ stay stock.
 ## Support
 
 - USB1 stereo playback: 16/24-bit, 48/96 kHz.
+- Headset microphone capture over USB1: mono 16-bit, 48 kHz, including mic-only use.
 - Native Windows volume and mute, synchronised with the transmitter and headset dials.
 - Wireless headset playback, USB2/USB3 source selection and USB1/secondary-source bias.
 - USB1 and line-in faders for analogue line-out, with independent or master-linked volume.
 - Headset, microphone, Bluetooth and display settings through the device menus.
 - OLED meters, headset battery status and spare-battery charging status.
 
-Physical USB1 microphone capture is still silent. Independent USB2/USB3 mixer
-faders and saving custom settings across power cycles are not implemented.
+Independent USB2/USB3 mixer faders and saving custom settings across power cycles
+are not implemented.
 Secondary-port audio and long-term reliability still need full validation. The spare battery shows charging
 or full status, not an estimated percentage while charging.
 

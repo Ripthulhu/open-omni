@@ -14,7 +14,7 @@ and hardware limitations are recorded in `../../docs/status.md`.
 - Strict MCU1 image packaging and flash verification, including running build identity and code readback.
 - Cold-start USB clock ordering: functional clock running before USBFSH PORTMODE access.
 - One startup acknowledgement after host USB configuration, using the NXP ROM flash API and full-page verification.
-- Native UAC2 playback through DSP47, serialized volume/mute, Windows percentage display and corrected dial direction. USB microphone packets remain silent.
+- Native UAC2 playback through DSP47, serialized volume/mute, Windows percentage display and corrected dial direction. USB1 microphone uses I2S0 RX DMA and asynchronous mono16/48 capture.
 - USB1 playback accepts packed stereo PCM16 or PCM24 at48 or96kHz through separate alternates and a programmable clock. Microphone has its own fixed16/48 UAC2 function. Format epochs isolate USB packets and quiesced DMA restarts; HID74 reports requested and applied formats independently. Exact-build hardware results belong in `../../docs/status.md`.
 - Source-owned SPI OLED driver, rotary input and millisecond event loop.
 - Hold the transmitter dial for one second to open the menu; short clicks select inside it. Headset dial direction follows the user-confirmed native calibration.
@@ -29,7 +29,7 @@ and hardware limitations are recorded in `../../docs/status.md`.
 
 Playback and native gain were hardware-tested on the earlier transmitter. Each new
 candidate requires separate validation on the replacement. MCU2 status communication
-does not establish USB2/USB3 audio routing. Headset microphone PCM, submenu-specific
+does not establish USB2/USB3 audio routing. Submenu-specific
 headset prompts, setting persistence and full lifecycle/endurance validation remain
 incomplete. The inherited watchdog can reset on faults; fault status currently does
 not survive that reset.

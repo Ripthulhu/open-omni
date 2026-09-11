@@ -43,6 +43,8 @@ jobs:
           cmake --build build-host
           ctest --test-dir build-host --output-on-failure
           python firmware/rebuild-re/test_ui_battery_host.py
+          python firmware/rebuild-re/test_microphone_host.py
+          python firmware/rebuild-re/test_playback_lifecycle_host.py
       - name: Fetch pinned SDK revisions
         run: python firmware/mcu1-source/tools/fetch_dependencies.py vendor
       - name: Build twice and package

@@ -13,7 +13,7 @@ are retained. The stock loader owns the acknowledgement metadata page at `0x7F80
 | USB2/USB3 | Source selection implemented; shares one MCU2 path; audio validation incomplete |
 | Line-out mixer | USB1 and line-in levels, mute and master-link controls implemented |
 | USB2/USB3 mixer faders | Not implemented |
-| Microphone capture | Endpoint streams silence; physical PCM path incomplete |
+| Microphone capture | USB1 mono PCM16 at 48 kHz; mic-only, reopen and 96k playback coexistence tested |
 | Headset settings | Limiter, ANC, transparency, microphone controls and EQ commands |
 | Bluetooth | Settings available; connection status depends on passive reports |
 | OLED | Meters, volume, source bias, battery status and configurable timeout |
