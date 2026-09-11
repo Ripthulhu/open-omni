@@ -9,8 +9,7 @@ USB1 microphone capture is mono 16-bit at 48 kHz. Mic-only operation, six reopen
 cycles, hardware mute/retraction and simultaneous 96 kHz playback were tested.
 
 Known gaps: independent USB2/USB3 mixer faders are missing, and local settings
-aren't saved across power cycles. Secondary
-USB audio and full lifecycle/endurance qualification remain incomplete.
+aren't saved across power cycles. Full lifecycle and endurance qualification remains incomplete.
 
 The firmware is built twice with identical application bytes. Host tests, UI
 sanitizer checks and simulated flasher tests on Windows, Linux and macOS pass before

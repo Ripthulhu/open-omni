@@ -19,7 +19,7 @@ stay stock.
 
 Independent USB2/USB3 mixer faders and saving custom settings across power cycles
 are not implemented.
-Secondary-port audio and long-term reliability still need full validation. The spare battery shows charging
+Long-term reliability still needs full validation. The spare battery shows charging
 or full status, not an estimated percentage while charging.
 
 [Hardware support and limitations](docs/status.md)

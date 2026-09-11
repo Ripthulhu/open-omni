@@ -10,7 +10,7 @@ are retained. The stock loader owns the acknowledgement metadata page at `0x7F80
 | Wireless headset playback | Working with stock MCU2 and DSP |
 | Native volume/mute | Windows, transmitter and headset controls integrated |
 | Source bias | USB1 versus the selected MCU2 source |
-| USB2/USB3 | Source selection implemented; shares one MCU2 path; audio validation incomplete |
+| USB2/USB3 | Both work on the stock MCU2; one active at a time, mixed with USB1 |
 | Line-out mixer | USB1 and line-in levels, mute and master-link controls implemented |
 | USB2/USB3 mixer faders | Not implemented |
 | Microphone capture | USB1 mono PCM16 at 48 kHz; mic-only, reopen and 96k playback coexistence tested |
@@ -36,8 +36,9 @@ local DSP acknowledgement, not acoustic verification or persistence.
 
 ## Known limits
 
-USB1 can mix with either USB2 or USB3. Three physical connectors don't provide three
-simultaneous USB streams. The DSP meter labels aren't proven USB port mappings.
+USB2 and USB3 both work, on the stock MCU2. Only one secondary is active at a time,
+mixed with USB1; the three connectors don't provide three simultaneous USB streams.
+The DSP meter labels aren't proven USB port mappings.
 
 Bluetooth status is unknown after MCU1 resets until a report arrives. An absent icon
 doesn't prove Bluetooth is off. Charging raises battery terminal voltage, so the
