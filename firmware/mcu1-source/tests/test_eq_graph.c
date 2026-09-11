@@ -27,7 +27,7 @@ int main(void)
     v.q[5]=5000;assert(eq_model(&v,narrow)==2);
     assert(broad[65]>narrow[65]);
     assert(eq_model(&v,narrow)==2); /* Selection-only redraw reuses cached samples. */
-    v.type[5]=6;assert(eq_model(&v,narrow)==0);
+    v.type[5]=6;assert(eq_model(&v,narrow)==2);
     v.frequency[5]=20001;assert(eq_model(&v,narrow)==2);
     v.frequency[0]=20001;v.frequency[1]=UINT_MAX;v.gain[2]=UINT_MAX;v.known[3]=false;
     v.apply=false;v.selected=0;omni_eq_ui_render(guarded.frame,&v);

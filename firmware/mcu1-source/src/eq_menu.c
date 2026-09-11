@@ -12,7 +12,7 @@ static unsigned count(void) {return depth==0u?3u:depth==1u?11u:4u;}
 static unsigned selected_id(void) {return depth?field():control;}
 static void limits(unsigned *min,unsigned *max)
 {
-    *min=0;*max=depth?240u:control==13u?9u:4u;
+    *min=0;*max=depth?247u:control==13u?9u:4u;
     if(depth==2u && row==1u) {*min=20;*max=20001;}
     if(depth==2u && row==2u) {*min=200;*max=10000;}
     if(depth==2u && row==3u) {*min=1;*max=6;}

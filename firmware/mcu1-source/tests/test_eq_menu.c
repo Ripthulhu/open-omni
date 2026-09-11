@@ -46,7 +46,7 @@ int main(void)
         click();if(id==12) click(); /* First band gain editor. */
         down();omni_eq_menu_render(frame);assert(editing && !strcmp(values[0],"+0.5dB"));
         unsigned before=writes;back();assert(writes==before && fields[base]==120);
-        click();omni_eq_menu_dial(INT_MIN);click();assert(fields[base]==240 && !applies);
+        click();omni_eq_menu_dial(INT_MIN);click();assert(fields[base]==247 && !applies);
         click();omni_eq_menu_dial(INT_MAX);click();assert(fields[base]==0);
         if(id==12) {
             down();click();down();click();assert(fields[base+10]==1100);

@@ -63,7 +63,7 @@ static bool draft_write(unsigned id,unsigned value)
     if(field>=40u) return false;
     unsigned kind=field/10u,band=field%10u;
     uint8_t *p=drafts[channel]+68u+(channel?band:6u*band);
-    if(kind==0u) {if(value>240u)return false;p[channel?0u:3u]=(uint8_t)((int)value-120);}
+    if(kind==0u) {if(value>247u)return false;p[channel?0u:3u]=(uint8_t)((int)value-120);}
     else if(channel) return false;
     else if(kind==1u) {if(value<20u || value>20001u)return false;p[0]=(uint8_t)value;p[1]=(uint8_t)(value>>8);}
     else if(kind==2u) {if(value<200u || value>10000u)return false;p[4]=(uint8_t)value;p[5]=(uint8_t)(value>>8);}

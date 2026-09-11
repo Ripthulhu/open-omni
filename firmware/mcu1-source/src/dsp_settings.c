@@ -30,7 +30,7 @@ static bool minutes(uint8_t value)
 static uint16_t le16(const uint8_t *p)
 { return (uint16_t)((uint16_t)p[0]|(uint16_t)((uint16_t)p[1]<<8)); }
 static bool gain_valid(uint8_t value)
-{ return value<=120u || value>=136u; }
+{ return value<=127u || value>=136u; }
 static bool eq_control(unsigned control)
 { return control>=DSP_SETTING_EQ_WIRELESS && control<=DSP_SETTING_EQ_BT; }
 static const builtin_eq *builtin(unsigned control,unsigned preset)

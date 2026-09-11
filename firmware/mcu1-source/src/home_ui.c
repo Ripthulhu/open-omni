@@ -318,10 +318,10 @@ static unsigned eq_model(const omni_eq_view *v,int16_t curve[104])
     unsigned budget=1u;bool ready=true;
     for(unsigned i=0;i<10u;++i) {
         unsigned key[4]={v->frequency[i],v->gain[i],v->q[i],v->type[i]};
-        if(!v->known[i] || key[0]<20u || key[0]>20001u || key[1]>240u ||
-           (key[0]!=20001u && (key[2]<200u || key[2]>10000u || key[3]<1u || key[3]>5u)))return 0;
+        if(!v->known[i] || key[0]<20u || key[0]>20001u || key[1]>247u ||
+           (key[0]!=20001u && (key[2]<200u || key[2]>10000u || key[3]<1u || key[3]>6u)))return 0;
         if(valid[i] && !memcmp(keys[i],key,sizeof(key)))continue;
-        bool flat=key[0]==20001u || ((key[3]==1u || key[3]>=4u) && key[1]==120u);
+        bool flat=key[0]==20001u || key[3]>5u || ((key[3]==1u || key[3]>=4u) && key[1]==120u);
         if(!flat && !budget){ready=false;continue;}
         if(!flat)--budget;
         for(unsigned x=0;x<104u;++x) bands[i][x]=flat?0:(int16_t)omni_eq_response_band(
@@ -349,12 +349,12 @@ void omni_eq_ui_render(uint8_t f[1024],const omni_eq_view *v)
     text(f,0,11,"+12",3,1,true);text(f,12,22,"0",1,1,true);text(f,0,33,"-12",3,1,true);
     for(unsigned x=22;x<=125;x+=3)pixel(f,x,25,true);
     for(unsigned i=0;i<3u;++i) {
-        unsigned x=v->parametric?eq_x(i==0u?100u:i==1u?1000u:i==2u?10000u:20000u):22u+i*34u;
+        unsigned x=v->parametric?eq_x(i==0u?100u:i==1u?1000u:10000u):22u+i*34u;
         for(unsigned y=13;y<=39;y+=7)pixel(f,x,y,true);
     }
     unsigned xs[10],ys[10],order[10],count=0;
     for(unsigned i=0;i<10u;++i) {
-        if(!v->known[i] || v->gain[i]>240u || (v->parametric && (v->frequency[i]<20u || v->frequency[i]>20000u)))continue;
+        if(!v->known[i] || v->gain[i]>247u || (v->parametric && (v->frequency[i]<20u || v->frequency[i]>20000u)))continue;
         xs[i]=v->parametric?eq_x(v->frequency[i]):22u+(i*103u+4u)/9u;
         ys[i]=eq_y(v->gain[i]);unsigned at=count;
         while(at && xs[order[at-1u]]>xs[i]){order[at]=order[at-1u];--at;}

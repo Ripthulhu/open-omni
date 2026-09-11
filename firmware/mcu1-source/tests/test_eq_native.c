@@ -40,7 +40,7 @@ int main(void)
         for(unsigned band=0;band<10;++band) {
             assert(io.write(base+band,band?240u:0u));
             assert(io.read(base+band,&value) && value==(band?240u:0u));
-            assert(!io.write(base+band,241));
+            assert(io.write(base+band,247));assert(!io.write(base+band,248));assert(io.write(base+band,band?240u:0u));
         }
         if(!channel) {
             assert(io.write(base+10,20001));assert(io.read(base+10,&value) && value==20001);
