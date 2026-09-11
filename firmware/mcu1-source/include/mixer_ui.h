@@ -3,6 +3,7 @@
 #include "controls.h"
 #include "source_mix.h"
 bool omni_mixer_ui_configure(unsigned input,unsigned level,bool linked,bool muted);
+bool omni_mixer_ui_toggle_line_mute(void);
 bool omni_mixer_ui_event(omni_control_kind_t);
 /* Short home click switches master/source-bias control; long hold opens the
  * menu. Remote D209 short clicks are consumed only at home. The line-output

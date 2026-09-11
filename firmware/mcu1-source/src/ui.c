@@ -38,6 +38,7 @@ static uint32_t shown_menu;
 static uint32_t shown_ms;
 static omni_controls_t buttons;
 static uint32_t button_counts[4],button_events[16][3],button_total,button_edges,button_last_edge,button_max_gap;
+static uint32_t back_tap_ms;static bool back_tap_pending;
 static uint8_t button_raw;
 /* Atomic desired snapshot permits a HID setter to publish without touching
  * display transfers or the main-loop control queue. Defaults retain one minute. */
@@ -251,8 +252,11 @@ void omni_ui_poll(void)
         entry[2]=(uint32_t)event.kind|((uint32_t)event.origin<<8)|((uint32_t)event.raw<<16);
         bool was_open=omni_mixer_ui_open();
         if(event.kind==OMNI_CONTROL_BACK && !was_open) {
-            int16_t vdb;uint8_t vm;audio_probe_volume_snapshot(&vdb,&vm);
-            (void)audio_probe_local(vdb,(uint8_t)(vm?0u:1u));
+            /* Single back tap = master mute, deferred ~300ms so a quick
+             * second tap resolves as a double: toggle the line-in mute. */
+            if(back_tap_pending && (uint32_t)(now-back_tap_ms)<300u) {
+                back_tap_pending=false;(void)omni_mixer_ui_toggle_line_mute();
+            } else {back_tap_pending=true;back_tap_ms=now;}
             woke=1;continue;
         }
         if(event.kind==OMNI_CONTROL_BIAS_0 || event.kind==OMNI_CONTROL_BIAS_1) {
@@ -276,6 +280,13 @@ void omni_ui_poll(void)
             (void)omni_native_menu_request(menu_token,is_open,is_open?2u:1u,now);
         }
         woke=1;
+    }
+    if(back_tap_pending && (uint32_t)(now-back_tap_ms)>=300u) {
+        back_tap_pending=false;
+        if(!omni_mixer_ui_open()) {
+            int16_t vdb;uint8_t vm;audio_probe_volume_snapshot(&vdb,&vm);
+            (void)audio_probe_local(vdb,(uint8_t)(vm?0u:1u));woke=1;
+        }
     }
     omni_settings_menu_live_poll(now);
     int16_t db; uint8_t mute; audio_probe_volume_snapshot(&db,&mute);

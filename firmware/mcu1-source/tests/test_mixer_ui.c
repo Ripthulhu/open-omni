@@ -177,5 +177,10 @@ int main(int argc,char **argv)
     assert(omni_mixer_ui_event(OMNI_CONTROL_BACK));
     assert(!omni_mixer_ui_render(frame));
     assert(!omni_mixer_ui_dial(1));
+    {uint32_t st[15];omni_mixer_ui_status(0,false,st);
+     unsigned m0=(st[11]>>9)&1u;
+     assert(omni_mixer_ui_toggle_line_mute());
+     omni_mixer_ui_status(0,false,st);
+     assert(((st[11]>>9)&1u)!=m0);}
     return 0;
 }

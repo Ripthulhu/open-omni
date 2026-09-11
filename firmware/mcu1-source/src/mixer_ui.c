@@ -17,6 +17,12 @@ bool omni_mixer_ui_configure(unsigned input,unsigned level,bool linked,bool mute
     init();if(!omni_mixer_set(&mixer,input,level,linked,muted)) return false;
     ++revision;return true;
 }
+bool omni_mixer_ui_toggle_line_mute(void)
+{
+    init();
+    omni_mix_input s=mixer.input[OMNI_MIX_LINE];
+    return omni_mixer_ui_configure(OMNI_MIX_LINE,s.level,s.linked,!s.muted);
+}
 uint32_t omni_mixer_ui_revision(void) { return revision; }
 bool omni_mixer_ui_open(void) { return page!=0u || omni_settings_menu_open(); }
 bool omni_mixer_ui_control(const omni_control_event_t *event)
