@@ -1,6 +1,7 @@
 #include "eq_nvm.h"
 #include "dsp_settings.h"
 #include "ui.h"
+#include "audio_probe.h"
 #include <string.h>
 
 /* Glue: restore the persisted EQ into the cache at boot, and write it back to
@@ -39,6 +40,11 @@ void omni_eq_persist_poll(uint32_t now)
     if (gen == saved_gen) return;
     /* Coalesce rapid edits: only write once the EQ has been stable ~2s. */
     if ((uint32_t)(now - change_ms) < 2000u) return;
+    /* The flash erase/program runs with interrupts off (eq_nvm_lpc5528.c). On
+     * Full-Speed USB that stall desyncs the isochronous playback ring and
+     * corrupts audio until replug. Defer the write while playback is streaming;
+     * saved_gen stays behind so poll() retries once the stream stops. */
+    if (audio_probe_alternate(OMNI_PLAYBACK_AS_INTERFACE) != 0) return;
     uint8_t payload[DSP_EQ_NVM_PAYLOAD], page[OMNI_EQ_NVM_PAGE];
     size_t plen = omni_dsp_settings_eq_serialize(payload);
     if (!omni_eq_nvm_build(page, next_seq, payload, plen)) { saved_gen = gen; return; }
