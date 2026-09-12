@@ -245,6 +245,14 @@ usb_status_t USB_DeviceAudioInit(uint8_t controller, usb_device_class_config_str
 {
     (void)config;
     if (!omni_volume_init(&volume,OMNI_NATIVE_MIN_DB,0,OMNI_NATIVE_STEP_DB,-30*256)) return kStatus_USB_Error;
+    /* Seed the master UNMUTED. omni_volume_init defaults muted=true (belt-and-
+     * braces against a startup blast), and the host is expected to push its
+     * remembered mute state on device arrival. A cold replug gets that push and
+     * comes up correctly; a firmware flash re-enumerates too quickly for Windows
+     * to re-run arrival init, so the device would otherwise sit stuck at the
+     * power-up muted=true. No blast risk: no USB stream flows until the host has
+     * set the real volume/mute, and line-in to the headset isn't gated here. */
+    omni_mute_set(&volume,false,false);
     *handle=&volume;
     return USB_DeviceClassGetDeviceHandle(controller,&audio_device);
 }
