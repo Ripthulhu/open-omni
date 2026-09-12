@@ -3,8 +3,19 @@
 #include <stdatomic.h>
 #include <string.h>
 
+/* AB1585 stock TX DSP v0.36.0 quirk (dispatcher 0x0836D77E): the bank-2
+ * sidetone GET (BD 05 D4 02 02) unconditionally emits its local negative ACK
+ * (DD 03 D4 01) before the sidetone constructor at 0x0836B45C sends the real
+ * DB 07 D4 02 03 reply. For THIS profile only, keep the raw negative status
+ * (peer_status) but DEFER the terminal so the bounded WAIT window still
+ * accepts the late DB. Not device-verified; scoped to one profile id. Define
+ * 0u to disable on images whose bank-2 path does not pre-NACK. */
+#ifndef OMNI_HEADSET_QUERY_D4_BANK2_NACK_QUIRK
+#define OMNI_HEADSET_QUERY_D4_BANK2_NACK_QUIRK 11u
+#endif
+
 typedef struct { uint8_t request[5],reply[5],prefix_length,reply_length; } profile;
-static const profile profiles[11]={
+static const profile profiles[13]={
     {{0xbd,4,0xe1,2},{0xdb,13,0xe1,3},4,13},
     {{0xbd,4,0xe4,2},{0xdb,5,0xe4,3},4,5},
     {{0xbd,4,0x20,1},{0xdb,46,0x20,1},4,46},
@@ -15,7 +26,9 @@ static const profile profiles[11]={
     {{0xbd,5,0xd3,2,1},{0xdb,6,0xd3,3,1},5,6},
     {{0xbd,5,0xd3,2,2},{0xdb,6,0xd3,3,2},5,6},
     {{0xbd,5,0xd4,1,2},{0xdb,7,0xd4,1,3},5,7},
-    {{0xbd,5,0xd4,2,2},{0xdb,7,0xd4,2,3},5,7}
+    {{0xbd,5,0xd4,2,2},{0xdb,7,0xd4,2,3},5,7},
+    {{0xbd,4,0xdb,2},{0xdb,7,0xdb,3},4,7},
+    {{0xbd,5,0xe3,2,1},{0xdb,9,0xe3,3,1},5,9}
 };
 static struct {
     omni_link_parser parser;
@@ -23,7 +36,7 @@ static struct {
     uint32_t tx_bytes,rx_bytes,unrelated,invalid,ack_count,timeout_reason;
     uint8_t raw[OMNI_HEADSET_QUERY_MAX_REPLY],length,offset,peer_status;
     volatile omni_headset_query_phase phase;
-    bool matched,negative,bad_reply,fault,cancel,frame_eligible;
+    bool matched,negative,bad_reply,fault,cancel,frame_eligible,nack_pending;
 } state;
 static bool transport_faulted;
 bool omni_headset_query_busy(void)
@@ -37,7 +50,7 @@ static void finish(omni_headset_query_phase phase,uint32_t now)
 { state.finished_ms=now;publish(phase); }
 bool omni_headset_query_request(uint32_t token,unsigned selected,uint32_t now)
 {
-    if(!token || selected<1u || selected>11u) return false;
+    if(!token || selected<1u || selected>13u) return false;
     if(state.phase!=HEADSET_QUERY_IDLE && state.token==token) return state.profile==selected;
     if(omni_headset_query_busy() || transport_faulted) return false;
     memset(&state,0,sizeof(state));
@@ -61,7 +74,13 @@ void omni_headset_query_observe(uint8_t byte,uint32_t now)
         if(submitted && state.frame_eligible && p[2]==spec->request[2]) {
             if(p[1]!=3u) { ++state.invalid;state.bad_reply=true;return; }
             ++state.ack_count;state.peer_status=p[3];
-            if(p[3]) state.negative=true;
+            /* Quirk: defer the bank-2 sidetone NACK so a late,correctly framed
+             * DB 07 D4 02 03 can still complete;the raw status stays in
+             * peer_status. Every other profile NACKs immediately. */
+            if(p[3]) {
+                if(state.profile==OMNI_HEADSET_QUERY_D4_BANK2_NACK_QUIRK) state.nack_pending=true;
+                else state.negative=true;
+            }
         } else ++state.unrelated;
     }
     if(!complete) return;
@@ -107,6 +126,13 @@ void omni_headset_query_poll(uint32_t now,bool can_start,omni_headset_query_io i
         state.timeout_reason=2;
         if(state.phase==HEADSET_QUERY_SEND || state.phase==HEADSET_QUERY_DRAIN) {
             state.fault=true;transport_faulted=true;
+        }
+        /* Quirk: a deferred bank-2 NACK with no DB by the deadline resolves as
+         * the NACK it was;a matched (or malformed) DB still takes precedence. */
+        if(state.phase==HEADSET_QUERY_WAIT && state.nack_pending) {
+            finish(state.matched?HEADSET_QUERY_DONE:
+                   state.bad_reply?HEADSET_QUERY_INVALID_REPLY:HEADSET_QUERY_NACK,now);
+            return;
         }
         finish(HEADSET_QUERY_TIMEOUT,now);return;
     }

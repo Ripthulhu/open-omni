@@ -19,7 +19,8 @@ typedef struct {
 } omni_headset_query_io;
 
 /* Exact read whitelist IDs:1 E1,2 E4,3 bulk20,4 bulk80,5 ANC,6 transparency,
- * 7 ANClevel,8 micstate,9 micvolume,10 sidetonebank1,11 sidetonebank2.
+ * 7 ANClevel,8 micstate,9 micvolume,10 sidetonebank1,11 sidetonebank2,
+ * 12 micnoise (DB07 DB03),13 E3 tuple (DB09 E3 03 01,selected-field).
  * Admission/build identity belongs to HID's caller. This function does not
  * access the UART. Same token/profile is idempotent; changed profile rejects.
  * A new nonzero token replaces frozen evidence only when no request is busy. */

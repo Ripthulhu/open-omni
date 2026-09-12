@@ -237,7 +237,7 @@ static void service(uint32_t now,bool online)
         omni_remote_menu_poll(&menu,now,false,(omni_remote_menu_io){0,tx,drained});
         if(!mode_requested && !mode_failed && !state.yielding && !omni_dsp_settings_busy()) {
             const uint8_t value=2u;
-            if(++mode_token==0u) ++mode_token;
+            mode_token=omni_dsp_settings_next_token();
             mode_requested=omni_dsp_settings_request(mode_token,DSP_SETTING_OUTPUT_MODE,&value,1u,now);
         }
         omni_dsp_settings_poll(now,spaced && idle_exhausted && !omni_dsp_settings_frame_pending(),

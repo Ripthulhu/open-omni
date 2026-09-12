@@ -257,10 +257,91 @@ static void eq_and_cache(void)
     assert(!omni_dsp_settings_value(0,0,out));assert(!omni_dsp_settings_value(1,4,out));
     assert(!omni_dsp_settings_status(2,(uint32_t *)(void *)unchanged));
 }
+static void anc_level_normalization(void)
+{
+    uint8_t out[60];
+    /* Bulk snapshot: ANC state 4 derives active level 5-4=1. */
+    reset(0);
+    uint8_t bulk[46]={0xdb,46,0x20,1};bulk[5]=4;feed(bulk,46,1);
+    assert(cached(DSP_SETTING_ANC_STATE,out)==5u && out[24]==4u);
+    assert(cached(DSP_SETTING_ANC_LEVEL,out)==5u && out[24]==1u);
+    /* Compact state-2 report (active level 5-2=3) must re-derive the level,
+     * not leave the state-4 level cached and stale. */
+    const uint8_t compact2[]={0xdb,5,0xd5,3,2};feed(compact2,5,2);
+    assert(cached(DSP_SETTING_ANC_STATE,out)==5u && out[24]==2u);
+    assert(cached(DSP_SETTING_ANC_LEVEL,out)==5u && out[24]==3u);
+    /* States 1 and 0 carry no active level; the last real level must survive. */
+    const uint8_t compact1[]={0xdb,5,0xd5,3,1};feed(compact1,5,3);
+    assert(cached(DSP_SETTING_ANC_STATE,out)==5u && out[24]==1u);
+    assert((cached(DSP_SETTING_ANC_LEVEL,out)&1u) && out[24]==3u);
+    const uint8_t compact0[]={0xdb,5,0xd5,3,0};feed(compact0,5,4);
+    assert(cached(DSP_SETTING_ANC_STATE,out)==5u && out[24]==0u);
+    assert((cached(DSP_SETTING_ANC_LEVEL,out)&1u) && out[24]==3u);
+    /* A later dedicated level reply still lands verbatim. */
+    const uint8_t level2[]={0xdb,6,0xd5,3,0x11,2};feed(level2,6,5);
+    assert(cached(DSP_SETTING_ANC_LEVEL,out)==5u && out[24]==2u);
+}
+static void late_ack_after_disconnect(void)
+{
+    const uint8_t v=6;uint8_t out[60];
+    /* SET reaches WAIT: frame fully transmitted and drained, ACK outstanding. */
+    request(DSP_SETTING_MIC_VOLUME,&v,1,0);poll(0,true,16);
+    assert(phase()==DSP_SETTINGS_WAIT);
+    /* RF link drops before the ACK: E4 non-connected clears the cache and bumps
+     * the epoch. The pre-disconnect SET's late DD ACK must NOT re-validate it. */
+    const uint8_t down[]={0xdb,5,0xe4,3,1};feed(down,5,1);
+    ack(0xd3,0,2);poll(2,false,16);
+    assert(phase()==DSP_SETTINGS_ACCEPTED);
+    assert(cached(DSP_SETTING_MIC_VOLUME,out)==0u);
+    /* Disconnect then reconnect before the ACK: still stale, still invalid. */
+    request(DSP_SETTING_MIC_VOLUME,&v,1,10);poll(10,true,16);
+    assert(phase()==DSP_SETTINGS_WAIT);
+    const uint8_t drop[]={0xdb,5,0xe4,3,1};feed(drop,5,11);
+    const uint8_t up[]={0xdb,5,0xe4,3,3};feed(up,5,12);
+    ack(0xd3,0,13);poll(13,false,16);
+    assert(phase()==DSP_SETTINGS_ACCEPTED);
+    assert(cached(DSP_SETTING_MIC_VOLUME,out)==0u);
+    /* A fresh SET issued after reconnect, with no transition during its flight,
+     * must still validate normally (fix must not over-invalidate). */
+    request(DSP_SETTING_MIC_VOLUME,&v,1,20);poll(20,true,16);ack(0xd3,0,21);poll(21,false,16);
+    assert(phase()==DSP_SETTINGS_ACCEPTED);
+    assert(cached(DSP_SETTING_MIC_VOLUME,out)==3u);
+    /* Normal ACK with no link transition at all also validates. */
+    request(DSP_SETTING_MIC_VOLUME,&v,1,30);poll(30,true,16);ack(0xd3,0,31);poll(31,false,16);
+    assert(phase()==DSP_SETTINGS_ACCEPTED);
+    assert(cached(DSP_SETTING_MIC_VOLUME,out)==3u);
+}
+static void vp_level_readback(void)
+{
+    /* A6: stock D2/0B voice-prompt level is a READ-ONLY passive cache, kept
+     * distinct from D2/03 master gain and D2/09 home reports. */
+    uint8_t out[60];reset(0);
+    assert(cached(DSP_SETTING_VP_LEVEL,out)==0u);
+    /* DB 06 D2 0B 03 xx caches the raw stock byte as valid|DB-observed. */
+    const uint8_t vp[]={0xdb,6,0xd2,0x0b,3,7};feed(vp,6,1);
+    assert(cached(DSP_SETTING_VP_LEVEL,out)==5u && out[24]==7);
+    /* Range is unproven: an out-of-1..10 value is retained verbatim, not clamped. */
+    const uint8_t vp_hi[]={0xdb,6,0xd2,0x0b,3,200};feed(vp_hi,6,2);
+    assert(cached(DSP_SETTING_VP_LEVEL,out)==5u && out[24]==200);
+    /* Master gain (D2/03) and home (D2/09) are separate D2 subcommands and must
+     * not write the VP cache; VP must not disturb home. */
+    const uint8_t gain[]={0xdb,6,0xd2,3,0,56};feed(gain,6,3);
+    const uint8_t home[]={0xdb,6,0xd2,9,3,0};feed(home,6,3);
+    assert(cached(DSP_SETTING_VP_LEVEL,out)==5u && out[24]==200);
+    assert(cached(DSP_SETTING_HOME_MODE,out)==5u && out[24]==0);
+    /* No writer exists: validation and request both reject VP_LEVEL. */
+    uint8_t v=3;assert(!omni_dsp_settings_valid(DSP_SETTING_VP_LEVEL,&v,1));
+    assert(!omni_dsp_settings_request(++token,DSP_SETTING_VP_LEVEL,&v,1,4));
+    /* An RF disconnect (E4 not-connected) invalidates the VP cache like any
+     * other remote-derived value. */
+    const uint8_t disc[]={0xdb,5,0xe4,3,1};feed(disc,5,5);
+    assert(cached(DSP_SETTING_VP_LEVEL,out)==0u);
+}
 int main(void)
 {
     scalar_packets();validation_and_coalescing();faults_and_boundaries();
     output_mode_readback();eq_and_cache();home_mode_shared_opcode();
-    puts("DSP settings payloads, scheduler, faults, mode readback and EQ contracts passed");
+    anc_level_normalization();late_ack_after_disconnect();vp_level_readback();
+    puts("DSP settings payloads, scheduler, faults, mode readback, EQ, ANC-level, late-ACK and VP contracts passed");
     return 0;
 }

@@ -22,6 +22,7 @@ bool omni_mcu2_runtime_read(unsigned page,uint32_t out[15])
 {memset(out,0,60);if(!page){out[1]=20;out[12]=0x201;}else out[7]=3;return true;}
 bool omni_mcu2_select_input(uint8_t side) {return side<2;}
 bool omni_dsp_settings_busy(void) {return busy;}
+uint32_t omni_dsp_settings_next_token(void) {static uint32_t t=0x80000000u;return ++t;}
 bool omni_dsp_settings_value(unsigned id,unsigned page,uint8_t out[60])
 {assert(page==0 && id<20);memset(out,0,60);uint32_t h[6]={1,id,0,lengths[id],lengths[id]?5u:0u,1};memcpy(out,h,24);memcpy(out+24,cache[id],36);return true;}
 bool omni_dsp_settings_request(uint32_t token,unsigned id,const uint8_t *p,size_t n,uint32_t now)

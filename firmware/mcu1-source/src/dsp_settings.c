@@ -14,7 +14,7 @@ static struct {
     uint8_t link_state;
     uint32_t token,control,queued_ms,started_ms,finished_ms,drained_ms;
     uint32_t tx_bytes,rx_bytes,ack_count,unrelated,invalid,coalesced,timeouts;
-    uint32_t link_ms;
+    uint32_t link_ms,link_gen,req_gen;
     volatile omni_dsp_settings_phase phase;
     bool initialized,fault,cancel,ack,negative,bad_reply,frame_eligible;
     bool verifying,matched,link_valid;
@@ -167,7 +167,15 @@ static void invalidate(unsigned control)
 }
 static void finish(omni_dsp_settings_phase phase,uint32_t now)
 {
-    if(phase==DSP_SETTINGS_ACCEPTED) remember(state.control,state.value,state.value_length,3u,now);
+    /* Only re-validate on ACCEPTED when the RF epoch stamped at request start
+     * still holds. A disconnect between SET and its late ACK bumped link_gen;
+     * that stale ACK must not repopulate the cache the disconnect cleared. The
+     * phase/status still report ACCEPTED (the local DD ACK genuinely arrived);
+     * only the remote-state cache is withheld. Non-ACCEPTED paths unchanged. */
+    if(phase==DSP_SETTINGS_ACCEPTED) {
+        if(state.req_gen==state.link_gen)
+            remember(state.control,state.value,state.value_length,3u,now);
+    }
     else if(state.tx_bytes) invalidate(state.control);
     state.finished_ms=now;publish(phase);
 }
@@ -181,7 +189,7 @@ bool omni_dsp_settings_request(uint32_t token,unsigned control,const uint8_t *va
     if(state.fault || (omni_dsp_settings_busy() &&
        (state.phase!=DSP_SETTINGS_QUEUED || state.control!=control))) return false;
     if(state.phase==DSP_SETTINGS_QUEUED) ++state.coalesced;
-    state.token=token;state.control=control;state.queued_ms=now;
+    state.token=token;state.control=control;state.queued_ms=now;state.req_gen=state.link_gen;
     state.started_ms=state.finished_ms=state.drained_ms=0;
     state.offset=0;state.length=frame[1];state.value_length=(uint8_t)length;
     memcpy(state.frame,frame,state.length);memcpy(state.value,value,length);
@@ -189,19 +197,48 @@ bool omni_dsp_settings_request(uint32_t token,unsigned control,const uint8_t *va
     state.cancel=state.ack=state.negative=state.bad_reply=state.verifying=state.matched=false;
     state.peer_status=255u;publish(DSP_SETTINGS_QUEUED);return true;
 }
+uint32_t omni_dsp_settings_next_token(void)
+{
+    /* Same cooperative main-loop context as every caller; no atomics needed.
+     * Skip 0 (the request-reject sentinel) and keep bit31 SET so internal
+     * tokens never alias host diagnostic tokens (<0x80000000). Wrap in-half. */
+    static uint32_t next=0x80000000u;
+    if(++next<0x80000001u) next=0x80000001u;
+    return next;
+}
+
+/* Active ANC states 2..4 encode level = 5 - state; states 0/1 (off/transparency)
+ * carry no level and must not clobber the last remembered one. One decoder for
+ * both the bulk snapshot and the compact D5 report so neither leaves level stale. */
+static void remember_anc(uint8_t st,uint32_t now)
+{
+    remember(DSP_SETTING_ANC_STATE,&st,1,5u,now);
+    if(st>=2u && st<=4u) { uint8_t level=(uint8_t)(5u-st);remember(DSP_SETTING_ANC_LEVEL,&level,1,5u,now); }
+}
 
 static void observe_db(const uint8_t *p,size_t n,uint32_t now)
 {
     if(p[0]!=0xdbu || n<4u) return;
     if(n==5u && p[2]==0xe4u && p[3]==3u) {
         state.link_state=p[4];state.link_ms=now;state.link_valid=true;
-        if(p[4]!=3u) for(unsigned i=1;i<DSP_SETTING_COUNT;++i) cache[i].flags=0;
+        /* Non-connected transition bumps the RF epoch so a SET issued while
+         * connected cannot re-validate the cache we clear here when its late
+         * ACK finally lands. This clear does NOT cancel the live transaction. */
+        if(p[4]!=3u) { ++state.link_gen;for(unsigned i=1;i<DSP_SETTING_COUNT;++i) cache[i].flags=0; }
     } else if(n==5u && p[2]==0x14u && p[3]==3u && p[4]>=0x30u && p[4]<=0x35u) {
         remember(DSP_SETTING_BT_STATE,p+4,1,5u,now);
     } else if(n==6u && p[2]==0xd2u && p[3]==9u && p[4]==3u && p[5]<=1u) {
         /* Also a physical short-click report. Cache only; the separate UI
          * event consumer must deliver every report, including repeated values. */
         remember(DSP_SETTING_HOME_MODE,p+5,1,5u,now);
+    } else if(n==6u && p[2]==0xd2u && p[3]==0x0bu && p[4]==3u) {
+        /* VP (voice-prompt) level readback. Frame layout (subcmd 0x0B, selector
+         * 0x03, 6-byte) is INFERRED from the D2/09 home-readback analogue and is
+         * UNCONFIRMED on hardware; a hardware capture may require revising this
+         * match. READ ONLY: retain the raw stock byte; range/unit/persistence
+         * unproven so no bound, no writer. Distinct D2 subcommand from master
+         * gain (D2/03) and home (D2/09). */
+        remember(DSP_SETTING_VP_LEVEL,p+5,1,5u,now);
     } else if(n==6u && p[2]==0xd3u && p[3]==3u && p[4]==1u && p[5]<=1u) {
         remember(DSP_SETTING_MIC_STATE,p+5,1,5u,now);
     } else if(n==6u && p[2]==0xd3u && p[3]==3u && p[4]==2u && p[5]>=1u && p[5]<=10u) {
@@ -209,13 +246,23 @@ static void observe_db(const uint8_t *p,size_t n,uint32_t now)
     } else if(n==7u && p[2]==0xd4u && p[3]==1u && p[4]==3u && p[5]<=1u && p[6]>=1u && p[6]<=10u) {
         remember(DSP_SETTING_SIDETONE,p+5,2,5u,now);
     } else if(p[2]==0xd5u && p[3]==3u) {
-        if(n==5u && p[4]<=4u) remember(DSP_SETTING_ANC_STATE,p+4,1,5u,now);
+        if(n==5u && p[4]<=4u) remember_anc(p[4],now);
         else if(n==6u && p[4]==0x10u && p[5]>=1u && p[5]<=10u)
             remember(DSP_SETTING_TRANSPARENCY,p+5,1,5u,now);
         else if(n==6u && p[4]==0x11u && p[5]>=1u && p[5]<=3u)
             remember(DSP_SETTING_ANC_LEVEL,p+5,1,5u,now);
     } else if(n==5u && p[2]==0x43u && p[3]==3u && p[4]>=1u && p[4]<=2u) {
         remember(DSP_SETTING_OUTPUT_MODE,p+4,1,5u,now);
+    } else if(n==7u && p[2]==0xdbu && p[3]==3u && p[5]>=1u && p[5]<=3u) {
+        /* Compact mic-noise readback; map like bulk20's {enabled!=0,level}.
+         * The constructor's 3rd byte is not presumed zero, just not stored. */
+        uint8_t noise[2]={(uint8_t)(p[4]!=0u),p[5]};
+        remember(DSP_SETTING_MIC_NOISE,noise,2,5u,now);
+    } else if(n==9u && p[2]==0xe3u && p[3]==3u && p[4]==1u &&
+              p[5]<=1u && p[6]<=10u && p[7]<=2u) {
+        /* Selected-field E3 readback: decode only selector1's tuple; the 4th
+         * byte stays raw metadata (kept by the query layer), never zero-filled. */
+        remember(DSP_SETTING_BT_STARTUP,p+5,3,5u,now);
     } else if(n==46u && p[2]==0x20u && p[3]==1u) {
         /* Stock 0x1e6b0 receives p+2. Full-frame offsets below are verified
          * through its settings consumer and host feature reports. */
@@ -234,11 +281,7 @@ static void observe_db(const uint8_t *p,size_t n,uint32_t now)
         if(p[24]<=4u) remember(DSP_SETTING_EQ_WIRELESS,p+24,1,5u,now);
         if(p[26]<=9u) remember(DSP_SETTING_EQ_MIC,p+26,1,5u,now);
         if(p[25]<=4u) remember(DSP_SETTING_EQ_BT,p+25,1,5u,now);
-        if(p[5]<=4u) remember(DSP_SETTING_ANC_STATE,p+5,1,5u,now);
-        if(p[5]>=2u && p[5]<=4u) {
-            uint8_t level=(uint8_t)(5u-p[5]);
-            remember(DSP_SETTING_ANC_LEVEL,&level,1,5u,now);
-        }
+        if(p[5]<=4u) remember_anc(p[5],now);
         if(p[6]>=1u && p[6]<=10u) remember(DSP_SETTING_TRANSPARENCY,p+6,1,5u,now);
         if(p[14]<=1u) remember(DSP_SETTING_MIC_STATE,p+14,1,5u,now);
         if(p[15]>=1u && p[15]<=10u) remember(DSP_SETTING_MIC_VOLUME,p+15,1,5u,now);

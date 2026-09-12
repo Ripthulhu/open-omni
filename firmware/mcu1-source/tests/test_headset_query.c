@@ -42,7 +42,7 @@ static void whitelist(void)
 {
     uint8_t raw[60];uint32_t w[15],snapshot[15];
     assert(!omni_headset_query_request(0,1,0));assert(!omni_headset_query_request(1,0,0));
-    assert(!omni_headset_query_request(1,12,0));
+    assert(!omni_headset_query_request(1,14,0));
     assert(!omni_headset_query_reply(1,raw));assert(!omni_headset_query_status(2,0,w));
     for(unsigned selected=1;selected<=11;++selected) {
         begin(selected,0);
@@ -127,9 +127,46 @@ static void deadlines_and_handoffs(void)
     assert(phase()==HEADSET_QUERY_IO_ERROR && omni_headset_query_transport_fault());
     begin(1,0);omni_headset_query_release(1);assert(phase()==HEADSET_QUERY_CANCELLED);
 }
+static void bank2_sidetone_nack_quirk(void)
+{
+    /* Profile 11 (bank-2 sidetone,BD 05 D4 02 02) draws the stock AB1585's
+     * unconditional local NACK DD 03 D4 01 before its real DB 07 D4 02 03.
+     * The quirk keeps the negative status yet holds the bounded WAIT so the
+     * late DB still completes;a genuine no-DB deadline resolves as NACK. */
+    uint32_t w[15];uint8_t raw[60];
+    const uint8_t nack[4]={0xdd,3,0xd4,1};
+    /* ACK,intervening poll,then DB -> DONE with the raw reply retained. */
+    begin(11,0);poll(0,true,5);assert(phase()==HEADSET_QUERY_WAIT);
+    feed(nack,4,1);poll(1,false,0);assert(phase()==HEADSET_QUERY_WAIT);
+    assert(omni_headset_query_status(0,1,w) && w[14]==1u); /* peer NACK recorded,not acted on */
+    reply(11,2);poll(2,false,0);assert(phase()==HEADSET_QUERY_DONE);
+    assert(omni_headset_query_reply(token,raw) && raw[8]==prefixes[10][1]);
+    /* ACK and DB before a single poll -> DONE,not NACK. */
+    begin(11,0);poll(0,true,5);assert(phase()==HEADSET_QUERY_WAIT);
+    feed(nack,4,1);reply(11,1);poll(1,false,0);assert(phase()==HEADSET_QUERY_DONE);
+    /* Wrong bank (D4 01) is unrelated telemetry;no valid DB -> deadline NACK. */
+    begin(11,0);poll(0,true,5);feed(nack,4,1);poll(1,false,0);
+    feed((uint8_t[]){0xdb,7,0xd4,1,3,0x55,0x55},7,2);poll(2,false,0);
+    assert(phase()==HEADSET_QUERY_WAIT);
+    poll(250,false,0);
+    assert(phase()==HEADSET_QUERY_NACK && !omni_headset_query_transport_fault());
+    /* Malformed length after the NACK -> INVALID_REPLY. */
+    begin(11,0);poll(0,true,5);feed(nack,4,1);poll(1,false,0);
+    feed((uint8_t[]){0xdb,8,0xd4,2,3,0x55,0x55,0x55},8,2);poll(2,false,0);
+    assert(phase()==HEADSET_QUERY_INVALID_REPLY);
+    /* NACK then silence -> bounded wait ends NACK,no retained reply,no fault. */
+    begin(11,0);poll(0,true,5);feed(nack,4,1);poll(1,false,0);
+    assert(phase()==HEADSET_QUERY_WAIT);
+    poll(250,false,0);assert(phase()==HEADSET_QUERY_NACK);
+    assert(!omni_headset_query_reply(token,raw) && !omni_headset_query_transport_fault());
+    /* Scope guard:bank-1 sidetone (profile 10) still fast-NACKs on the same DD. */
+    begin(10,0);poll(0,true,5);feed(nack,4,1);poll(1,false,0);
+    assert(phase()==HEADSET_QUERY_NACK);
+}
 int main(void)
 {
     whitelist();interleaving_and_errors();deadlines_and_handoffs();
-    puts("Headset queries:11 exact read profiles, frozen tokens/raw evidence, shared opcodes, deadlines and handoffs passed");
+    bank2_sidetone_nack_quirk();
+    puts("Headset queries:11 exact read profiles, frozen tokens/raw evidence, shared opcodes, deadlines, handoffs and bank-2 NACK quirk passed");
     return 0;
 }

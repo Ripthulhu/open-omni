@@ -43,6 +43,7 @@ bool omni_native_headset_gain_read(unsigned page,uint32_t out[15])
 bool omni_dsp_settings_status(unsigned page,uint32_t out[15])
 { assert(page==0u);memcpy(out,backend,60u);return read_valid; }
 bool omni_dsp_settings_busy(void) {return (backend[5]&1u)!=0u;}
+uint32_t omni_dsp_settings_next_token(void) {static uint32_t t=0x80000000u;return ++t;}
 bool omni_dsp_settings_request(uint32_t token,unsigned control,const uint8_t *value,size_t length,uint32_t at)
 {
     ++request_calls;

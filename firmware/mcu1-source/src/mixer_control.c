@@ -7,7 +7,7 @@
 #include <stdatomic.h>
 #include <string.h>
 static volatile uint32_t requested;
-static uint32_t applied,token=0xc0000000u,submitted_token,submitted_revision;
+static uint32_t applied,submitted_token,submitted_revision;
 static uint32_t submitted_epoch,submitted_ms,finished_ms,phase;
 static uint8_t submitted_mode;
 static bool waiting,have_submission,have_link,connected;
@@ -56,9 +56,9 @@ void omni_mixer_control_service(uint32_t now,bool allowed)
     if(!peer || !(w[3]&8u) || omni_dsp_settings_busy()) return;
     if(have_submission && submitted_mode==(uint8_t)mix.bias_mode) return;
     uint8_t mode=(uint8_t)mix.bias_mode;
-    uint32_t next=token+1u;if(next<0xc0000000u) next=0xc0000001u;
+    uint32_t next=omni_dsp_settings_next_token();
     if(omni_dsp_settings_request(next,DSP_SETTING_HOME_MODE,&mode,1u,now)) {
-        token=submitted_token=next;submitted_mode=mode;submitted_revision=mix.revision;
+        submitted_token=next;submitted_mode=mode;submitted_revision=mix.revision;
         submitted_ms=now;phase=DSP_SETTINGS_QUEUED;waiting=have_submission=true;
     }
 }

@@ -31,6 +31,12 @@ typedef enum {
     DSP_SETTING_HOME_MODE,         /* [0/1] alternate home knob context.
                                    * D209 ACK means local dispatch ONLY: stock
                                    * masks a remote-forwarding failure. No SET echo. */
+    DSP_SETTING_VP_LEVEL,          /* READ ONLY: stock D2/0B voice-prompt level.
+                                   * Passive cache of the raw DB byte; frame layout
+                                   * (subcmd 0x0B) INFERRED from D2/09, unconfirmed
+                                   * on hardware; range/unit/persistence unproven,
+                                   * so encode() has NO writer case. Distinct D2
+                                   * subcommand from master gain (D2/03)/home (D2/09). */
     DSP_SETTING_COUNT
 } omni_dsp_setting;
 
@@ -68,6 +74,12 @@ typedef struct {
  * No pairing, factory reset, raw opcode, bootloader or power-off API. */
 bool omni_dsp_settings_request(uint32_t token, unsigned control,
                                const uint8_t *value, size_t length, uint32_t now);
+/* Central monotonic token source for EVERY internal producer (native-gain mode
+ * owner, settings menu, mixer home-mode). Returns nonzero and always bit31-SET,
+ * so it can never alias a host diagnostic token (those are forced bit31-CLEAR,
+ * <0x80000000). One source keeps two producers' distinct in-flight requests
+ * from colliding on the idempotence guard above. Cooperative main-loop only. */
+uint32_t omni_dsp_settings_next_token(void);
 /* Pure bounded validation, safe for an IRQ admission mailbox. It does not
  * initialize or access transaction state and does not transmit anything. */
 bool omni_dsp_settings_valid(unsigned control, const uint8_t *value, size_t length);

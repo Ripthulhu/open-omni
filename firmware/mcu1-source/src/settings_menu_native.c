@@ -5,7 +5,7 @@
 #include "ui.h"
 #include "mcu2_probe.h"
 #include <string.h>
-static uint32_t token=0x80000000u,submitted;
+static uint32_t submitted;
 static unsigned last_kind;
 static uint32_t read_token=0xc0000000u,read_ms;
 static bool read_attempted;
@@ -31,9 +31,9 @@ static void capture_baseline(unsigned channel)
 static bool submit(unsigned id,const uint8_t *p,size_t n)
 {
     if(omni_dsp_settings_busy()) return false;
-    uint32_t next=(token+1u)|0x80000000u;
+    uint32_t next=omni_dsp_settings_next_token();
     if(!omni_dsp_settings_request(next,id,p,n,omni_ui_milliseconds())) return false;
-    token=submitted=next;last_kind=3;return true;
+    submitted=next;last_kind=3;return true;
 }
 static bool draft_begin(unsigned channel,bool flat)
 {
