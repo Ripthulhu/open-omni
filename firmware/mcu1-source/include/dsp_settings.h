@@ -33,9 +33,9 @@ typedef enum {
                                    * masks a remote-forwarding failure. No SET echo. */
     DSP_SETTING_VP_LEVEL,          /* READ ONLY: stock D2/0B voice-prompt level.
                                    * Passive cache of the raw DB byte; frame layout
-                                   * (subcmd 0x0B) INFERRED from D2/09, unconfirmed
-                                   * on hardware; range/unit/persistence unproven,
-                                   * so encode() has NO writer case. Distinct D2
+                                   * (subcmd 0x0B) confirmed on hardware 2026-09-12;
+                                   * range/unit/persistence still unproven, so
+                                   * encode() has NO writer case. Distinct D2
                                    * subcommand from master gain (D2/03)/home (D2/09). */
     DSP_SETTING_COUNT
 } omni_dsp_setting;

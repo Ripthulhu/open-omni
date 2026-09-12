@@ -8,8 +8,10 @@
  * (DD 03 D4 01) before the sidetone constructor at 0x0836B45C sends the real
  * DB 07 D4 02 03 reply. For THIS profile only, keep the raw negative status
  * (peer_status) but DEFER the terminal so the bounded WAIT window still
- * accepts the late DB. Not device-verified; scoped to one profile id. Define
- * 0u to disable on images whose bank-2 path does not pre-NACK. */
+ * accepts the late DB. Device-verified 2026-09-12: bank-2 pre-NACKs
+ * (peer_status 1) then still sends the DB; bank-1 does not (peer_status 0),
+ * so the profile-11 scope is correct. Scoped to one profile id; define 0u to
+ * disable on images whose bank-2 path does not pre-NACK. */
 #ifndef OMNI_HEADSET_QUERY_D4_BANK2_NACK_QUIRK
 #define OMNI_HEADSET_QUERY_D4_BANK2_NACK_QUIRK 11u
 #endif

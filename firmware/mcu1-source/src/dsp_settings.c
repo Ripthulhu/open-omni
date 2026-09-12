@@ -233,11 +233,10 @@ static void observe_db(const uint8_t *p,size_t n,uint32_t now)
         remember(DSP_SETTING_HOME_MODE,p+5,1,5u,now);
     } else if(n==6u && p[2]==0xd2u && p[3]==0x0bu && p[4]==3u) {
         /* VP (voice-prompt) level readback. Frame layout (subcmd 0x0B, selector
-         * 0x03, 6-byte) is INFERRED from the D2/09 home-readback analogue and is
-         * UNCONFIRMED on hardware; a hardware capture may require revising this
-         * match. READ ONLY: retain the raw stock byte; range/unit/persistence
-         * unproven so no bound, no writer. Distinct D2 subcommand from master
-         * gain (D2/03) and home (D2/09). */
+         * 0x03, 6-byte) confirmed on hardware 2026-09-12: BD 05 D2 0B 02 ->
+         * DB 06 D2 0B 03 xx, no pre-NACK. READ ONLY: retain the raw stock byte;
+         * range/unit/persistence still unproven so no bound, no writer. Distinct
+         * D2 subcommand from master gain (D2/03) and home (D2/09). */
         remember(DSP_SETTING_VP_LEVEL,p+5,1,5u,now);
     } else if(n==6u && p[2]==0xd3u && p[3]==3u && p[4]==1u && p[5]<=1u) {
         remember(DSP_SETTING_MIC_STATE,p+5,1,5u,now);
