@@ -32,6 +32,13 @@ TEST = r'''
 #include "ui.c"
 
 void omni_settings_menu_bind_native(void) {}
+/* ui.c gained EQ-persist, live-poll, line-mute and master-mute calls; this
+ * UI/battery harness exercises none of them, so stub them out to link. */
+void omni_eq_persist_restore(void) {}
+void omni_eq_persist_poll(uint32_t now) {(void)now;}
+void omni_settings_menu_live_poll(uint32_t now) {(void)now;}
+bool omni_mixer_ui_toggle_line_mute(void) {return false;}
+int audio_probe_local(int16_t volume,uint8_t mute) {(void)volume;(void)mute;return 0;}
 static uint8_t bt_raw;static uint32_t bt_flags;
 bool omni_dsp_settings_value(unsigned control,unsigned page,uint8_t out[60]) {
  assert(control==DSP_SETTING_BT_STATE && page==0);memset(out,0,60);
